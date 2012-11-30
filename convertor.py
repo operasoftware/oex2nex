@@ -3,7 +3,7 @@ import os, sys
 
 debug = False
 
-# Only the default if we don't file any from content element
+# Only the default if we don't find any from content element
 # Yeah, this could be index.{htm,html,xhtm,xhtml,svg}
 indexdoc = "index.html"
 # The best place to get the popup file is where it is added in the background
@@ -29,7 +29,7 @@ class Oex2Crx:
 	- from files matching /includes/* in the zip package get the includes/excludes
 	- add 'matches' part to the manifest
 	- combine all scripts from index.html, popup.html, options.html to a single file
-	- wrap the above in opera.ready(function () { })
+	- wrap the above in opera.isReady(function () { })
 	- add manifest to .crx file
 	- sign the .crx file if key is provided (also needs openssl installed)
 	"""
@@ -103,7 +103,7 @@ class Oex2Crx:
 		indexfile = indexdoc
 		content = root.find("{http://www.w3.org/ns/widgets}content")
 		if content is not None:
-			if content.find("[@src]"):
+			if content.find("[@src]") is not None:
 				indexfile = content.attrib["src"]
 
 		shimWrap = self.shimWrap
@@ -124,7 +124,7 @@ class Oex2Crx:
 			# note that this also need to take care of localisation, which it doesn't now
 			if it.filename == indexfile:
 				# all scripts in indexdoc need to be combined into a single .js
-				# file and wrapped in an opera.ready() function. Also this new
+				# file and wrapped in an opera.isReady() function. Also this new
 				# file needs to be put in the indexdoc as a script and others
 				# removed
 				data = shimWrap(data, "index", oex, crx)
@@ -151,7 +151,7 @@ class Oex2Crx:
 							excludes.append(line[epos + 9:])
 					if debug: print "Includes: " , includes, " Excludes: ", excludes
 				# wrap the script, but we should also combine all included scripts to one
-				data = "opera.ready(function ()\n{\n" + data + "\n});\n"
+				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
 			elif it.filename != "config.xml":
 				resources += ('"' + it.filename + '",')
 
@@ -168,7 +168,7 @@ class Oex2Crx:
 
 		# Merged injected scripts
 		if injscrData:
-			injscrData = "opera.ready(function ()\n{\n" + injscrData + "\n});\n"
+			injscrData = "opera.isReady(function ()\n{\n" + injscrData + "\n});\n"
 			crx.writestr("allscripts_injected.js", injscrData.encode("utf-8"))
 			# add injected script shim if we have any includes or excludes
 			injfh = open(oexInjShim, 'r')
@@ -180,20 +180,28 @@ class Oex2Crx:
 				print "Could not open " + oexInjShim
 			s_injscripts = '"' + oexInjShim  + '", "allscripts_injected.js"'
 			if debug: print "Injected scripts:" + s_injscripts[:-1]
-			s_matches = ""
+			matches = ""
+			discards = ""
 			for s in includes:
-				s_matches = s_matches + '"' + s + '",'
-			s_matches = s_matches[:-1]
-			if not s_matches:
+				matches = matches + '"' + s + '",'
+			for s in excludes:
+				discards = discards + '"' + s + '",'
+
+			matches = matches[:-1]
+			discards = discards[:-1]
+			if not matches:
 				# match any page
-				s_matches = '"http://*/*", "https://*/*"'
+				matches = '"http://*/*", "https://*/*"'
 
 		manifest = ""
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
 		if hasPopup:
 			manifest += ',\n"browser_action" : {"default_popup" : "popup.html"}';
 		if injscrData:
-			manifest += ',\n"content_scripts" : [{"matches" : [' + s_matches + '], "js": [' + s_injscripts + ']}]'
+			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + s_injscripts + ']'
+			if discards:
+				manifest += ', "discards": [' + discards + ']'
+			manifest += '}]'
 
 		# add web_accessible_resources
 		# all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
@@ -271,7 +279,7 @@ class Oex2Crx:
 		else:
 			doc.documentElement.appendChild(shim)
 			doc.documentElement.appendChild(allscr)
-		scriptdata = "opera.ready(function ()\n{\n" + scriptdata + "\n});\n"
+		scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
 		crx.writestr(oscr, scriptdata.encode("utf-8"))
 		return serializer.render(domwalker(doc))
 
