@@ -87,6 +87,8 @@ class Oex2Crx:
 		description = root.find("{http://www.w3.org/ns/widgets}description")
 		if description is not None:
 			description = description.text.encode("utf-8")
+		else:
+			description = "No description found in config.xml."
 		accesslist = root.findall("{http://www.w3.org/ns/widgets}access")
 		accessorigins = []
 		for acs in accesslist:
@@ -106,7 +108,7 @@ class Oex2Crx:
 			if content.find("[@src]") is not None:
 				indexfile = content.attrib["src"]
 
-		shimWrap = self.shimWrap
+		shimWrap = self._shimWrap
 		# parsing includes and excludes from the included scripts
 		# Can excludes be used somewhere in manifest.json?
 		includes = []
@@ -145,10 +147,10 @@ class Oex2Crx:
 					for line in lines:
 						ipos = line.find("@include ")
 						if ipos != -1:
-							includes.append(line[ipos + 9:])
+							includes.append((line[ipos + 9:]).strip())
 						epos = line.find("@exclude ")
 						if epos != -1:
-							excludes.append(line[epos + 9:])
+							excludes.append((line[epos + 9:]).strip())
 					if debug: print "Includes: " , includes, " Excludes: ", excludes
 				# wrap the script, but we should also combine all included scripts to one
 				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
@@ -216,8 +218,54 @@ class Oex2Crx:
 		if debug: print "Manifest: ", manifest
 		crx.writestr("manifest.json", manifest)
 
+	def _fixVarScoping(self, scriptdata):
+		""" Attempt to parse the script text and do some variable scoping fixes
+		so that the scripts used in the oex work with the shim """
+		try:
+			from slimit.parser import Parser
+			from slimit import ast
+		except ImportError:
+			print "ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'. Note that the crx package created might not work correctly."
+			return scriptdata
+
+		try:
+			jstree = Parser().parse(scriptdata)
+			# List the functions that are supposed to be in global scope
+			globalfuncs = {}
+			for node in jstree.children():
+				if isinstance(node, ast.VarStatement):
+					# print 'isvar?:', c, c.children(), c.to_ecma()
+					vdecls = node.children()
+					for vd in vdecls:
+						# export the statement into global scope
+						# E.g. -
+						# var foo = function () {....} is converted to var foo = window["foo"] = function () { ... }
+						# var foo = 43; is converted to var foo = window["foo"] = 43
+						# function baz(arg1,...) {} is converted into window["baz"] = function baz (args) {}
+						if debug: print 'Variable declaration:', vd, ', identifier:', vd.identifier.value , ',initialiser:', vd.initializer #, ',ecma:' , vd.to_ecma()
+						if isinstance(vd, ast.VarDecl):
+							idv = vd.identifier.value
+							# ugly hack to export into global scope, but it works!
+							vd.identifier.value += (' = window["' + vd.identifier.value + '"]')
+				if isinstance(node, ast.FuncDecl):
+					globalfuncs[node.identifier.value] = node.to_ecma()
+					if debug: print 'Func declaration', node, ', identifier:', node.identifier.value, ',elems:', node.elements #, ', ecma:', node.to_ecma()
+
+			# Fix global functions in script text
+			scriptdata = jstree.to_ecma()
+			for gf in globalfuncs:
+				try:
+					scriptdata = scriptdata.replace(globalfuncs[gf], 'window["' + gf + '"] = ' + globalfuncs[gf], 1)
+				except Exception as e:
+					print "Threw exception in func. scope fixer:", e
+
+		except Exception as e:
+			print 'ERROR: Threw exception in global scope mangler. The scripts in the crx package might not work correctly.', e
+
+		return scriptdata
 
 	def convert(self):
+		""" Public method which does the real work """
 		self.readoex()
 		self._convert()
 		self._oex.close()
@@ -225,7 +273,11 @@ class Oex2Crx:
 		if self._keyfile:
 			self.signcrx()
 
-	def shimWrap(self, html, type="index", oex=None,crx=None):
+	def _shimWrap(self, html, type="index", oex=None,crx=None):
+		"""
+		Applies certain corrections to the HTML source passed to this method.
+		Specifically adds the relevant shim script, wraps all script text
+		within opera.isReady() methods etc. """
 		try:
 			import html5lib
 		except ImportError:
@@ -248,6 +300,7 @@ class Oex2Crx:
 				except KeyError:
 					print "The file " + sname + " was not found in archive."
 			else: # could be an inline script
+				# but popups could not use inline scripts in crx packages
 				if (scr.childNodes[0]):
 					scriptdata += scr.childNodes[0].nodeValue
 			scr.parentNode.removeChild(scr)
@@ -263,7 +316,7 @@ class Oex2Crx:
 			oscr = "allscripts_" + type + ".js"
 			shim.setAttribute("src", oexPPShim)
 			ppdata = self._getShimData(oexPPShim)
-			crx.writestr(oexBgShim, ppdata)
+			crx.writestr(oexPPShim, ppdata)
 
 		allscr = doc.createElement("script")
 		allscr.setAttribute("src", oscr)
@@ -279,8 +332,9 @@ class Oex2Crx:
 		else:
 			doc.documentElement.appendChild(shim)
 			doc.documentElement.appendChild(allscr)
+		scriptdata = self._fixVarScoping(scriptdata.encode("utf-8", "backslashreplace"))
 		scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
-		crx.writestr(oscr, scriptdata.encode("utf-8"))
+		crx.writestr(oscr, scriptdata)
 		return serializer.render(domwalker(doc))
 
 	def signcrx(self):
