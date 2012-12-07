@@ -111,6 +111,11 @@ class Oex2Crx:
 		if content is not None:
 			if content.find("[@src]") is not None:
 				indexfile = content.attrib["src"]
+		icon = root.find("{http://www.w3.org/ns/widgets}icon")
+		iconfile = None
+		if icon is not None:
+			if icon.find("[@src]") is not None:
+				iconfile = icon.attrib["src"]
 
 		shimWrap = self._shimWrap
 		# parsing includes and excludes from the included scripts
@@ -224,6 +229,8 @@ class Oex2Crx:
 
 		manifest = ""
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
+		if iconfile is not None:
+			manifest += ',\n"icons" : {"128" : "' + iconfile + '"}';
 		if hasPopup:
 			manifest += ',\n"browser_action" : {"default_popup" : "popup.html"}';
 		if hasOption:
