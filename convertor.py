@@ -33,12 +33,13 @@ class Oex2Crx:
 	- add manifest to .crx file
 	- sign the .crx file if key is provided (also needs openssl installed)
 	"""
-	def __init__(self, infile, outfile, keyfile=None):
-		if (infile == None or outfile == None):
+	def __init__(self, in_file, out_file, key_file=None, is_dir=False):
+		if (in_file == None or out_file == None):
 			raise Exception("You should provide input file and output file")
-		self._infile = infile
-		self._outfile = outfile
-		self._keyfile = keyfile
+		self._in_file = in_file
+		self._out_file = out_file
+		self._key_file = key_file
+		self._is_dir  = is_dir
 		self._oex = None
 		self._crx = None
 
@@ -50,8 +51,11 @@ class Oex2Crx:
 		import zipfile
 		if debug: print 'Reading oex file.'
 		try:
-			oex = zipfile.ZipFile(self._infile, "r")
-			crx = zipfile.ZipFile(self._outfile, "w", zipfile.ZIP_DEFLATED)
+			oex = zipfile.ZipFile(self._in_file, "r")
+			if self._is_dir is True:
+				crx = zipfile.ZipFile(self._out_file + '.crx', "w", zipfile.ZIP_DEFLATED)
+			else:
+				crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
 		except Exception as e:
 			print "Error reading/writing the given files.", e
 			sys.exit(2)
@@ -113,10 +117,13 @@ class Oex2Crx:
 		# Can excludes be used somewhere in manifest.json?
 		includes = []
 		excludes = []
-		injscripts = []
 		injscrData = ""
+		inj_scripts  = ""
 		hasPopup = False
+		hasOption = False
+		hasInjScrs = False
 		resources = ""
+		merge_scripts = False
 		for it in oex.infolist():
 			if debug: print it.filename
 			data = oex.read(it.filename)
@@ -130,14 +137,22 @@ class Oex2Crx:
 				# file needs to be put in the indexdoc as a script and others
 				# removed
 				data = shimWrap(data, "index", oex, crx)
-			elif it.filename == popupdoc or it.filename == optionsdoc:
+			elif it.filename == popupdoc:
 				# same as with indexdoc
 				hasPopup = True
 				data = shimWrap(data, "popup", oex, crx)
+			elif it.filename == optionsdoc:
+				# same as with indexdoc
+				hasOption = True
+				data = shimWrap(data, "option", oex, crx)
 			elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
+				hasInjScrs = True
+				# add individual file names to the content_scripts value
+				if not merge_scripts:
+					inj_scripts += ('"' + it.filename + '"')
 				# store the script file name to add it to manifest's content_scripts section
-				injscripts.append(it.filename)
-				injscrData += unicode(oex.read(it.filename), "utf-8")
+				if merge_scripts is True:
+					injscrData += unicode(oex.read(it.filename), "utf-8")
 				if debug: print 'Included script:', it.filename
 				pos = data.find("==/UserScript==")
 				if pos != -1:
@@ -154,7 +169,10 @@ class Oex2Crx:
 					if debug: print "Includes: " , includes, " Excludes: ", excludes
 				# wrap the script, but we should also combine all included scripts to one
 				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
-			elif it.filename != "config.xml":
+			elif not merge_scripts and it.filename.endswith(".js"):
+				# wrap all scripts inside opera.isReady()
+				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
+			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
 				resources += ('"' + it.filename + '",')
 
 			# Do not add config.xml or .js files to the crx package.
@@ -168,20 +186,29 @@ class Oex2Crx:
 				except UnicodeEncodeError:
 					crx.writestr(it.filename, data.encode("utf-8"))
 
-		# Merged injected scripts
-		if injscrData:
-			injscrData = "opera.isReady(function ()\n{\n" + injscrData + "\n});\n"
-			crx.writestr("allscripts_injected.js", injscrData.encode("utf-8"))
+		if hasInjScrs:
+			if debug: print 'Has injected scripts'
+			# Merged injected scripts
+			if merge_scripts and injscrData:
+				injscrData = "opera.isReady(function ()\n{\n" + injscrData + "\n});\n"
+				crx.writestr("allscripts_injected.js", injscrData.encode("utf-8"))
 			# add injected script shim if we have any includes or excludes
-			injfh = open(oexInjShim, 'r')
-			if injfh:
-				injData = injfh.read()
-				crx.writestr(oexInjShim, injData)
-				injfh.close()
+			try:
+				crx.getinfo(oexInjShim)
+			except KeyError:
+				injfh = open(oexInjShim, 'r')
+				if injfh:
+					injData = injfh.read()
+					crx.writestr(oexInjShim, injData)
+					injfh.close()
+				else:
+					print "Could not open " + oexInjShim
+
+			if merge_scripts:
+				inj_scripts = '"' + oexInjShim  + '", "allscripts_injected.js"'
 			else:
-				print "Could not open " + oexInjShim
-			s_injscripts = '"' + oexInjShim  + '", "allscripts_injected.js"'
-			if debug: print "Injected scripts:" + s_injscripts[:-1]
+				inj_scripts = '"' + oexInjShim  + '", ' + inj_scripts
+			if debug: print "Injected scripts:" + inj_scripts
 			matches = ""
 			discards = ""
 			for s in includes:
@@ -199,11 +226,13 @@ class Oex2Crx:
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
 		if hasPopup:
 			manifest += ',\n"browser_action" : {"default_popup" : "popup.html"}';
-		if injscrData:
-			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + s_injscripts + ']'
+		if hasOption:
+			manifest += ',\n"options_page" : "options.html"';
+		if hasInjScrs:
+			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + inj_scripts + ']'
 			if discards:
-				manifest += ', "discards": [' + discards + ']'
-			manifest += '}]'
+				manifest += ', "exclude_matches": [' + discards + ']'
+			manifest += ', "run_at": "document_start"}]'
 
 		# add web_accessible_resources
 		# all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
@@ -268,12 +297,22 @@ class Oex2Crx:
 		""" Public method which does the real work """
 		self.readoex()
 		self._convert()
+		# extract file to the specified directory
+		if self._is_dir:
+			if debug: print "Extracting .crx file to:", self._out_file
+			try:
+				self._crx.extractall(self._out_file)
+			except IOError as e:
+				print "ERROR: Threw exception while extracting crx file to the directory: ", self._out_file, "\nGot:", e , "\nIs there a file by the same name?"
 		self._oex.close()
 		self._crx.close()
-		if self._keyfile:
+		# Let us not sign if the output requested is for directory
+		if self._key_file and not self._is_dir:
 			self.signcrx()
+		print "Done!"
 
-	def _shimWrap(self, html, type="index", oex=None,crx=None):
+
+	def _shimWrap(self, html, type="index", oex=None,crx=None,merge_scripts=False):
 		"""
 		Applies certain corrections to the HTML source passed to this method.
 		Specifically adds the relevant shim script, wraps all script text
@@ -290,57 +329,72 @@ class Oex2Crx:
 		doc = htmlparser.parse(html, "utf-8")
 		scriptdata = u""
 		# FIXME: use the correct base for the @src (mostly this is the root [''])
-		for scr in doc.getElementsByTagName("script"):
-			sname = scr.getAttribute("src")
-			if debug: 'Script from ' + type + ' document:' + sname
-			if sname:
-				if debug: print 'reading script data:', sname
-				try:
-					scriptdata += unicode(oex.read(sname), "utf-8")
-				except KeyError:
-					print "The file " + sname + " was not found in archive."
-			else: # could be an inline script
-				# but popups could not use inline scripts in crx packages
-				if (scr.childNodes[0]):
-					scriptdata += scr.childNodes[0].nodeValue
-			scr.parentNode.removeChild(scr)
+		# Remove scripts only if we are merging all of them
+		if merge_scripts:
+			for scr in doc.getElementsByTagName("script"):
+				sname = scr.getAttribute("src")
+				if debug: 'Script from ' + type + ' document:' + sname
+				if sname:
+					if debug: print 'reading script data:', sname
+					try:
+						scriptdata += unicode(oex.read(sname), "utf-8")
+					except KeyError:
+						print "The file " + sname + " was not found in archive."
+				else: # could be an inline script
+					# but popups could not use inline scripts in crx packages
+					if (scr.childNodes[0]):
+						scriptdata += scr.childNodes[0].nodeValue
+				scr.parentNode.removeChild(scr)
 		shim = doc.createElement("script")
 		if type == "index":
-			oscr = "allscripts_background.js"
+			if merge_scripts:
+				oscr = "allscripts_background.js"
 			shim.setAttribute("src", oexBgShim)
 			bgdata = self._getShimData(oexBgShim)
-			crx.writestr(oexBgShim, bgdata)
+			try:
+				crx.getinfo(oexBgShim)
+			except KeyError:
+				crx.writestr(oexBgShim, bgdata)
 		elif type == "popup" or type == "option":
 			# Hopefully there would be only one popup.html or options.html in
 			# the package (Localisation ~!~!~!~)
-			oscr = "allscripts_" + type + ".js"
+			if merge_scripts:
+				oscr = "allscripts_" + type + ".js"
 			shim.setAttribute("src", oexPPShim)
 			ppdata = self._getShimData(oexPPShim)
-			crx.writestr(oexPPShim, ppdata)
+			# add popup shim only if it hasn't been added already
+			try:
+				crx.getinfo(oexPPShim)
+			except KeyError:
+				crx.writestr(oexPPShim, ppdata)
 
-		allscr = doc.createElement("script")
-		allscr.setAttribute("src", oscr)
-		tx1 = doc.createTextNode(" ")
-		allscr.appendChild(tx1)
-		tx2 = tx1.cloneNode(tx1)
+		if merge_scripts:
+			allscr = doc.createElement("script")
+			allscr.setAttribute("src", oscr)
+			tx1 = doc.createTextNode(" ")
+			allscr.appendChild(tx1)
+		tx2 = doc.createTextNode(" ")
 		shim.appendChild(tx2)
 		head = doc.getElementsByTagName("head")
 		if head is not None:
 			head = head[0]
-			head.appendChild(shim)
-			head.appendChild(allscr)
+			head.insertBefore(shim, head.firstChild)
+			if merge_scripts:
+				head.appendChild(allscr)
 		else:
-			doc.documentElement.appendChild(shim)
-			doc.documentElement.appendChild(allscr)
+			doc.documentElement.insertBefore(shim, doc.documentElement.firstChild)
+			if merge_scripts:
+				doc.documentElement.appendChild(allscr)
 		scriptdata = self._fixVarScoping(scriptdata.encode("utf-8", "backslashreplace"))
 		scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
-		crx.writestr(oscr, scriptdata)
+		if merge_scripts:
+			crx.writestr(oscr, scriptdata)
 		return serializer.render(domwalker(doc))
 
 	def signcrx(self):
-		infile = self._infile
-		outfile = self._outfile
-		keyfile = self._keyfile
+		in_file = self._in_file
+		out_file = self._out_file
+		key_file = self._key_file
 		signedcrx = crxheader
 		publen = 0
 		siglen = 0
@@ -351,16 +405,19 @@ class Oex2Crx:
 			password = sys.stdin.readline()
 			if password[-1] == "\n":
 				password = password[:-1]
-			args = shlex.split('openssl pkey -outform DER -pubout -out pubkey.der -in "' + keyfile + '" -passin "pass:' + password + '"')
+			args = shlex.split('openssl pkey -outform DER -pubout -out pubkey.der -in "' + key_file + '" -passin "pass:' + password + '"')
 			if debug: print args
 			subprocess.call(args)
-			args = shlex.split('openssl dgst -sha1 -binary -sign "' + keyfile + '" -passin "pass:' + password + '" -out "' + outfile + '.sig" "' + outfile + '"')
+			args = shlex.split('openssl dgst -sha1 -binary -sign "' + key_file + '" -passin "pass:' + password + '" -out "' + out_file + '.sig" "' + out_file + '"')
 			if debug: print args
 			subprocess.call(args)
 			try:
 				pfh = open("pubkey.der", 'rb')
-				sfh = open(outfile + '.sig', 'rb')
-				ofh = open(outfile, 'rb')
+				sfh = open(out_file + '.sig', 'rb')
+				if self._is_dir is True:
+					ofh = open(out_file + '.crx', 'rb')
+				else:
+					ofh = open(out_file, 'rb')
 			except Exception as e:
 				print 'Failed to open required files to create signature.', e
 
@@ -369,7 +426,7 @@ class Oex2Crx:
 				sigdata = sfh.read()
 				crxdata = ofh.read()
 				ofh.close()
-				ofh = open(outfile + '.signed.crx', 'wb')
+				ofh = open(out_file + '.signed.crx', 'wb')
 				import struct
 				publen = struct.pack("<L", len(pubdata))
 				siglen = struct.pack("<L", len(sigdata))
@@ -379,9 +436,9 @@ class Oex2Crx:
 				pfh.close()
 				ofh.close()
 				os.unlink("pubkey.der")
-				os.unlink(outfile + '.sig')
+				os.unlink(out_file + '.sig')
 		except Exception as e:
-				print "Signing of " + outfile + " failed, ", e
+				print "Signing of " + out_file + " failed, ", e
 
 	def _getShimData(self, shim):
 		data = None
@@ -396,41 +453,43 @@ class Oex2Crx:
 		return data
 
 def main(args = None):
-	import textwrap
-	USAGE=textwrap.dedent("""\
-			# Convert an Opera extension into a Chrome extension
-			Usage:
-			oex2crx.py -s key.pem infile.oex outfile.crx
-			# The outfile is also signed. OpenSSL need to be available for
-			# signing to work. You also need a private key in PEM format.
-			OR
-			oex2crx.py infile.oex outfile.crx
-			# Convert an Opera extension into a Chrome extension
+	import argparse
+	if len(sys.argv) < 3:
+		sys.argv.append('-h')
+	argparser = argparse.ArgumentParser(description="Convert an Opera extension into a Chrome extension")
+	argparser.add_argument('-s', '--key', help="Sign the crx package with the provided key (PEM) file. The signed package is named <file>.signed.crx.")
+	argparser.add_argument('in_file', nargs='?', help="Path to the .oex file")
+	argparser.add_argument('out_file', nargs='?', help="Output file path (a .crx file or a directory)")
+	argparser.add_argument('-x', '--isdir', action='store_true', default=False, help="Output path is a directory")
+	argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
+	#TODO: argparser.add_argument('-u', '--update-check', default=False, action='store_true', help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
 
-			Options:
-			s	sign the output file, key need to be provided.
+	args = argparser.parse_args()
+#	print args
+#	exit()
 
-			Note: You also need to place the shim files in an directory named oex_shim in the working directory.
-		""")
-	args = sys.argv[1:]
-	infile = None
-	outfile = None
-	keyfile = None
+#	args = sys.argv[1:]
+#	in_file = None
+#	out_file = None
+#	key_file = None
+#
+#	if len(args) > 3:
+#		key_file = args[1]
+#		in_file = args[2]
+#		out_file = args[3]
+#	elif len(args) == 2:
+#		in_file = args[0]
+#		out_file = args[1]
+#		key_file = None
+#	else:
+#		print USAGE
+#		sys.exit(1)
 
-	if len(args) > 3:
-		keyfile = args[1]
-		infile = args[2]
-		outfile = args[3]
-	elif len(args) == 2:
-		infile = args[0]
-		outfile = args[1]
-		keyfile = None
-	else:
-		print USAGE
-		sys.exit(1)
-
-	#TODO: input sanitisation?
-	convertor = Oex2Crx(infile, outfile, keyfile)
+	#TODO: Handle the case where out_file path is a directory
+	global debug
+	if args.debug is True:
+		debug = True
+	convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.isdir)
 	convertor.convert();
 	sys.exit(0)
 
