@@ -124,6 +124,8 @@ class Oex2Crx:
 		excludes = []
 		injscrData = ""
 		inj_scripts  = ""
+		matches = ""
+		discards = ""
 		hasPopup = False
 		hasOption = False
 		hasInjScrs = False
@@ -154,7 +156,7 @@ class Oex2Crx:
 				hasInjScrs = True
 				# add individual file names to the content_scripts value
 				if not merge_scripts:
-					inj_scripts += ('"' + it.filename + '"')
+					inj_scripts += ('"' + it.filename + '",')
 				# store the script file name to add it to manifest's content_scripts section
 				if merge_scripts is True:
 					injscrData += unicode(oex.read(it.filename), "utf-8")
@@ -213,16 +215,16 @@ class Oex2Crx:
 				inj_scripts = '"' + oexInjShim  + '", "allscripts_injected.js"'
 			else:
 				inj_scripts = '"' + oexInjShim  + '", ' + inj_scripts
-			if debug: print "Injected scripts:" + inj_scripts
-			matches = ""
-			discards = ""
+
 			for s in includes:
 				matches = matches + '"' + s + '",'
 			for s in excludes:
 				discards = discards + '"' + s + '",'
 
+			inj_scripts = inj_scripts[:-1]
 			matches = matches[:-1]
 			discards = discards[:-1]
+			if debug: print "Injected scripts:" + inj_scripts
 			if not matches:
 				# match any page
 				matches = '"http://*/*", "https://*/*"'
