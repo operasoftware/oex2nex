@@ -122,6 +122,7 @@ class Oex2Crx:
 		# Can excludes be used somewhere in manifest.json?
 		includes = []
 		excludes = []
+		injscrlist  = []
 		injscrData = ""
 		inj_scripts  = ""
 		matches = ""
@@ -154,6 +155,8 @@ class Oex2Crx:
 				data = shimWrap(data, "option", oex, crx)
 			elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
 				hasInjScrs = True
+				f_includes = []
+				f_excludes = []
 				# add individual file names to the content_scripts value
 				if not merge_scripts:
 					inj_scripts += ('"' + it.filename + '",')
@@ -170,13 +173,18 @@ class Oex2Crx:
 						ipos = line.find("@include ")
 						if ipos != -1:
 							includes.append((line[ipos + 9:]).strip())
+							f_includes.append((line[ipos + 9:]).strip())
 						epos = line.find("@exclude ")
 						if epos != -1:
 							excludes.append((line[epos + 9:]).strip())
+							f_excludes.append((line[epos + 9:]).strip())
 					if debug: print "Includes: " , includes, " Excludes: ", excludes
-				# wrap the script, but we should also combine all included scripts to one
-				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
+				if not len(f_includes):
+					f_includes = ["http://*/*", "https://*/*"]
+				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
+				# fix (or try to) variable scope issue
+				data = self._fixVarScoping(data)
 				# wrap all scripts inside opera.isReady()
 				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
@@ -238,10 +246,16 @@ class Oex2Crx:
 		if hasOption:
 			manifest += ',\n"options_page" : "options.html"';
 		if hasInjScrs:
-			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + inj_scripts + ']'
-			if discards:
-				manifest += ', "exclude_matches": [' + discards + ']'
-			manifest += ', "run_at": "document_start"}]'
+#			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + inj_scripts + ']'
+#			if discards:
+#				manifest += ', "exclude_matches": [' + discards + ']'
+#			manifest += ', "run_at": "document_start"}]'
+			# create separate entries for all injected scripts
+			csrs = ""
+			for cs in injscrlist:
+				csrs += '\n{"js": ["' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]) + ', "run_at": "document_start"},'
+			csrs = csrs[:-1]
+			manifest += ',\n"content_scripts": [' + csrs + ']'
 
 		# add web_accessible_resources
 		# all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
@@ -394,9 +408,11 @@ class Oex2Crx:
 			doc.documentElement.insertBefore(shim, doc.documentElement.firstChild)
 			if merge_scripts:
 				doc.documentElement.appendChild(allscr)
-		scriptdata = self._fixVarScoping(scriptdata.encode("utf-8", "backslashreplace"))
-		scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
+		# scripts are read and written here only if they are merged
+		# if not, they are varscopefixed and added in the routine where other files are added.
 		if merge_scripts:
+			scriptdata = self._fixVarScoping(scriptdata.encode("utf-8", "backslashreplace"))
+			scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
 			crx.writestr(oscr, scriptdata)
 		return serializer.render(domwalker(doc))
 
