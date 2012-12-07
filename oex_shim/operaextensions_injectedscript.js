@@ -1,14 +1,22 @@
 !(function( global ) {
-
-  var opera = global.opera || { 
-    REVISION: '1',
-    version: function() {
-      return this.REVISION;
-    },
-    postError: function( str ) { 
-      console.log( str ); 
-    } 
+  
+  var Opera = function() {};
+  
+  Opera.prototype.REVISION = '1';
+  
+  Opera.prototype.version = function() {
+    return this.REVISION;
   };
+  
+  Opera.prototype.buildNumber = function() {
+    return this.REVISION;
+  };
+  
+  Opera.prototype.postError = function( str ) {
+    console.log( str );
+  };
+
+  var opera = global.opera || new Opera();
   
   var isReady = false;
   
@@ -267,10 +275,54 @@ var delayedExecuteEvents = [
 
  EventTarget.mixin(Promise.prototype);
 
+var OEvent = function(eventType, eventProperties) {
+
+  var evt = document.createEvent("Event");
+
+  evt.initEvent(eventType, true, true);
+
+  // Add custom properties or override standard event properties
+  for (var i in eventProperties) {
+    evt[i] = eventProperties[i];
+  }
+
+  return evt;
+
+};
+
+var OEventTarget = function() {
+  
+  EventTarget.mixin( this );
+  
+};
+
+OEventTarget.prototype.constructor = OEventTarget;
+
+OEventTarget.prototype.addEventListener = function(eventName, callback, useCapture) {
+  this.on(eventName, callback); // no useCapture
+};
+
+OEventTarget.prototype.removeEventListener = function(eventName, callback, useCapture) {
+  this.off(eventName, callback); // no useCapture
+}
+
+OEventTarget.prototype.fireEvent = function( oexEventObj ) {
+
+  var eventName = oexEventObj.type;
+
+  // Register an onX functions registered for this event, if any
+  if(typeof this[ 'on' + eventName.toLowerCase() ] === 'function') {
+    this.on( eventName, this[ 'on' + eventName.toLowerCase() ] );
+  }
+
+  this.trigger( eventName, oexEventObj );
+
+};
+
 var OPromise = function() {
 
   Promise.call( this );
-
+  
   // General enqueue/dequeue infrastructure
 
   this._queue = [];
@@ -289,6 +341,12 @@ var OPromise = function() {
 
 OPromise.prototype = Object.create( Promise.prototype );
 
+// Add OEventTarget helper functions to OPromise prototype
+for(var i in OEventTarget.prototype) {
+  OPromise.prototype[i] = OEventTarget.prototype[i];
+}
+
+/*
 OPromise.prototype.addEventListener = OPromise.prototype.on;
 
 OPromise.prototype.removeEventListener = OPromise.prototype.off;
@@ -304,7 +362,7 @@ OPromise.prototype.fireEvent = function( oexEventObj ) {
 
   this.trigger( eventName, oexEventObj );
 
-}
+}*/
 
 OPromise.prototype.enqueue = function() {
 
@@ -347,24 +405,9 @@ OPromise.prototype.dequeue = function() {
   //console.log("Dequeue on obj[" + this._operaId + "] queue length = " + this._queue.length);
 };
 
-var OEvent = function(eventType, eventProperties) {
-
-  var evt = document.createEvent("Event");
-
-  evt.initEvent(eventType, true, true);
-
-  // Add custom properties or override standard event properties
-  for (var i in eventProperties) {
-    evt[i] = eventProperties[i];
-  }
-
-  return evt;
-
-};
-
 var OMessagePort = function( isBackground ) {
 
-  OPromise.call( this );
+  OEventTarget.call( this );
   
   this._isBackground = isBackground || false;
   
@@ -433,7 +476,7 @@ var OMessagePort = function( isBackground ) {
   
 };
 
-OMessagePort.prototype = Object.create( OPromise.prototype );
+OMessagePort.prototype = Object.create( OEventTarget.prototype );
 
 OMessagePort.prototype.postMessage = function( data ) {
   
@@ -451,20 +494,20 @@ OMessagePort.prototype.postMessage = function( data ) {
   
 };
 
-var OExtension = function() {
+var OperaExtension = function() {
   
   OMessagePort.call( this, false );
   
 };
 
-OExtension.prototype = Object.create( OMessagePort.prototype );
+OperaExtension.prototype = Object.create( OMessagePort.prototype );
 
-OExtension.prototype.__defineGetter__('bgProcess', function() {
+OperaExtension.prototype.__defineGetter__('bgProcess', function() {
   return chrome.extension.getBackgroundPage();
 });
 
 // Add Screenshot API to Injected Script processes only 
-OExtension.prototype.getScreenshot = function( callback ) {
+OperaExtension.prototype.getScreenshot = function( callback ) {
   
   var screenshotCallback = function( msg ) {
 
@@ -506,30 +549,31 @@ OExtension.prototype.getScreenshot = function( callback ) {
 
 // Generate API stubs
 
-var OEX = opera.extension = opera.extension || (function() { return new OExtension(); })();
+var OEX = opera.extension = opera.extension || new OperaExtension();
 
 var OEC = opera.contexts = opera.contexts || {};
-OExtension.prototype.getFile = function(path) {
-	var response = null;
-	
-	if(typeof path != "string")return response;
-	
+
+OperaExtension.prototype.getFile = opera.extension.getFile || function(path) {
+  var response = null;
+
+  if(typeof path != "string")return response;
+
   try{
     var host = chrome.extension.getURL('');
-    
+
     if(path.indexOf('widget:')==0)path = path.replace('widget:','chrome-extension:');
     if(path.indexOf('/')==0)path = path.substring(1);
-    
-		path = (path.indexOf(host)==-1?host:'')+path;
-    
-		var xhr = new XMLHttpRequest();
-    
+
+    path = (path.indexOf(host)==-1?host:'')+path;
+
+    var xhr = new XMLHttpRequest();
+
     xhr.onloadend = function(){
         if (xhr.readyState==xhr.DONE && xhr.status==200){
           result = xhr.response;
-          
+
           result.name = path.substring(path.lastIndexOf('/')+1);
-          
+
           result.lastModifiedDate = null;
           result.toString = function(){
             return "[object File]";
@@ -537,18 +581,19 @@ OExtension.prototype.getFile = function(path) {
           response = result;
         };
     };
-   
+
     xhr.open('GET',path,false);
     xhr.responseType = 'blob';
-  
+
     xhr.send(null);
-	
+
   } catch(e){
     return response;
   };
-  
-	return response;
+
+  return response;
 };
+
 var OStorageProxy = function () {
   
   // All attributes and methods defined in this class must be non-enumerable, 
@@ -558,7 +603,8 @@ var OStorageProxy = function () {
   
   Object.defineProperty(OStorageProxy.prototype, "getItem", { 
     value: function( key ) {
-      return this[key];
+      var val = this[key];
+      return val === undefined ? null : val;
     }
   });
   
@@ -639,6 +685,8 @@ OStorageProxy.prototype = Object.create( Storage.prototype );
 
 var OWidgetObjProxy = function() {
   
+  OEventTarget.call(this);
+  
   this.properties = {};
   
   // LocalStorage shim
@@ -712,7 +760,7 @@ var OWidgetObjProxy = function() {
   
 };
 
-OWidgetObjProxy.prototype = Object.create( OPromise.prototype );
+OWidgetObjProxy.prototype = Object.create( OEventTarget.prototype );
 
 OWidgetObjProxy.prototype.__defineGetter__('name', function() {
   return this.properties.name || "";
@@ -755,6 +803,73 @@ OWidgetObjProxy.prototype.__defineGetter__('preferences', function() {
 global.widget = global.widget || (function() {
   return new OWidgetObjProxy();
 })();
+/**
+ * UserJS shim
+ * http://www.opera.com/docs/userjs/specs
+ */
+
+EventTarget.mixin( Opera.prototype );
+
+Opera.prototype.defineMagicVariable = function(name, getter, setter) {
+
+  if((!getter || Object.prototype.toString.call(getter) !== "[object Function]") || 
+        (!setter || Object.prototype.toString.call(setter) !== "[object Function]")) {
+    return;
+  }
+  
+  var magicScriptEl = document.createElement('script');
+  magicScriptEl.setAttribute('type', 'text/javascript');
+
+  if (getter && Object.prototype.toString.call(getter) === "[object Function]") {
+    magicScriptEl.textContent += "window.__defineGetter__('" + name + "', " + getter.toString() + ");\n";
+  }
+  
+  if (setter && Object.prototype.toString.call(setter) === "[object Function]") {
+    magicScriptEl.textContent += "window.__defineSetter__('" + name + "', " + setter.toString() + ");\n";
+  }
+  
+  document.getElementsByTagName('head')[0].appendChild( magicScriptEl );
+  
+};
+
+Opera.prototype.defineMagicFunction = function(name, implementation) {
+  
+  if(!implementation || Object.prototype.toString.call(implementation) !== "[object Function]") {
+    return;
+  }
+  
+  var magicScriptEl = document.createElement('script');
+  magicScriptEl.setAttribute('type', 'text/javascript');
+  
+  magicScriptEl.textContent = "var " + name + " = " + implementation.toString() + ";";
+
+  document.getElementsByTagName('head')[0].appendChild( magicScriptEl );
+
+};
+
+Opera.prototype.addEventListener = function(name, fn, useCapture) {
+  // TODO Implement http://www.opera.com/docs/userjs/specs/#evlistener
+  // ... this.on(name, function)
+};
+
+Opera.prototype.removeEventListener = function(name, fn, useCapture) {
+  // TODO Implement http://www.opera.com/docs/userjs/specs/#evlistener
+  // ... this.off(name, function)
+};
+
+// Same backend implementation as widget.preferences
+Opera.prototype.__defineGetter__('scriptStorage', function() {
+  return widget.preferences;
+});
+
+Opera.prototype.setOverrideHistoryNavigationMode = function(mode) {
+  // NOT IMPLEMENTED
+};
+
+Opera.prototype.__defineGetter__('getOverrideHistoryNavigationMode', function() {
+  return "automatic"; // default
+});
+
   if (window.opera) {
     isReady = true;
 
@@ -831,8 +946,7 @@ global.widget = global.widget || (function() {
       function fireEvent(name, target) {
         var evtName = name.toLowerCase();
 
-        var evt = document.createEvent('Event');
-        evt.initEvent(evtName, true, true);
+        var evt = new OEvent(evtName, {});
 
         for (var i = 0, len = fns[evtName].length; i < len; i++) {
           fns[evtName][i].call(target, evt);
@@ -852,24 +966,41 @@ global.widget = global.widget || (function() {
             fns['isready'][i].call(window);
           }
           fns['isready'] = []; // clear
+          
+          var domContentLoadedTimeoutOverride = new Date().getTime() + 3000;
 
           // Synthesize and fire the document domcontentloaded event
           (function fireDOMContentLoaded() {
+            
+            var currentTime = new Date().getTime();
 
             // Check for hadFired_Load in case we missed DOMContentLoaded
             // event, in which case, we syntesize DOMContentLoaded here
             // (always synthesized in Chromium Content Scripts)
-            if (hasFired_DOMContentLoaded || hasFired_Load) {
+            if (hasFired_DOMContentLoaded || hasFired_Load || currentTime >= domContentLoadedTimeoutOverride) {
               
               fireEvent('domcontentloaded', document);
+              
+              if(currentTime >= domContentLoadedTimeoutOverride) {
+                console.warn('document.domcontentloaded event fired on check timeout');
+              }
+              
+              var loadTimeoutOverride = new Date().getTime() + 3000;
               
               // Synthesize and fire the window load event
               // after the domcontentloaded event has been
               // fired
               (function fireLoad() {
+                
+                var currentTime = new Date().getTime();
 
-                if (hasFired_Load) {
+                if (hasFired_Load || currentTime >= loadTimeoutOverride) {
+
                   fireEvent('load', window);
+                  
+                  if(currentTime >= loadTimeoutOverride) {
+                    console.warn('window.load event fired on check timeout');
+                  }
 
                   // Run delayed events (if any)
                   for(var i = 0, l = _delayedExecuteEvents.length; i < l; i++) {
@@ -877,10 +1008,11 @@ global.widget = global.widget || (function() {
                     o.target[o.methodName].apply(o.target, o.args);
                   }
                   _delayedExecuteEvents = [];
+
                 } else {
                   window.setTimeout(function() {
                     fireLoad();
-                  }, 20);
+                  }, 50);
                 }
                 
               })();
@@ -888,7 +1020,7 @@ global.widget = global.widget || (function() {
             } else {
               window.setTimeout(function() {
                 fireDOMContentLoaded();
-              }, 20);
+              }, 50);
             }
 
           })();
@@ -901,12 +1033,13 @@ global.widget = global.widget || (function() {
       var holdTimeoutOverride = new Date().getTime() + 3000;
     
       (function holdReady() {
-
+        
         var currentTime = new Date().getTime();
 
         if (currentTime >= holdTimeoutOverride) {
           // All scripts now ready to be executed: TIMEOUT override
-          console.error('opera.isReady check timed out');
+          console.warn('opera.isReady check timed out');
+          hasFired_Load = true; // override
           ready();
           return;
         }
