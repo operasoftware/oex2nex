@@ -1,8 +1,23 @@
 #!python
-import os, sys
+import os, sys, re, zipfile
+import xml.etree.ElementTree as etree
 
+try:
+	import html5lib
+except ImportError:
+	print """\nERROR:\nYou need to install module html5lib to get this working.\nThe easy way to do this is to run\neasy_install html5lib\nwhere easy_install is available as part of your Python installation."""
+	sys.exit(1)
+
+try:
+	from slimit.parser import Parser as JSParser
+except ImportError:
+	print "ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'."
+	sys.exit(1)
+
+from astwalker import ASTWalker
+
+#BEGIN
 debug = False
-
 # Only the default if we don't find any from content element
 # Yeah, this could be index.{htm,html,xhtm,xhtml,svg}
 indexdoc = "index.html"
@@ -10,10 +25,10 @@ indexdoc = "index.html"
 # process as a toolbaritem, but ...
 popupdoc = "popup.html"
 optionsdoc = "options.html"
-shimDir = "oex_shim/"
-oexBgShim =  shimDir + "operaextensions_background.js"
-oexPPShim = shimDir + "operaextensions_popup.js"
-oexInjShim = shimDir + "operaextensions_injectedscript.js"
+shim_dir = "oex_shim/"
+oex_bg_shim =  shim_dir + "operaextensions_background.js"
+oex_page_shim = shim_dir + "operaextensions_popup.js"
+oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00";
@@ -48,11 +63,10 @@ class Oex2Crx:
 		Reads the input file, creates/overwrites the output file and returns
 		the archives to the caller
 		"""
-		import zipfile
 		if debug: print 'Reading oex file.'
 		try:
 			oex = zipfile.ZipFile(self._in_file, "r")
-			if self._is_dir is True:
+			if self._is_dir:
 				crx = zipfile.ZipFile(self._out_file + '.crx', "w", zipfile.ZIP_DEFLATED)
 			else:
 				crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
@@ -69,7 +83,6 @@ class Oex2Crx:
 		necessary conversion to prepare the manifest.json of the crx file, add
 		wrappers and shims to make the crx work and writes the crx package.
 		"""
-		import xml.etree.ElementTree as etree
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
 		crx = self._crx
@@ -77,22 +90,41 @@ class Oex2Crx:
 		if debug: print "Config.xml", configStr
 		root = etree.fromstring(configStr)
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
-		name = root.find("{http://www.w3.org/ns/widgets}name")
-		if name is not None:
-			name = name.text.encode("utf-8")
+
+		def _get_best_elem(xmltree, tag):
+			"""
+			Find and return default or English tag's content when config.xml
+			has same tag with different xml:lang
+			"""
+			elems = root.findall("{http://www.w3.org/ns/widgets}" + tag)
+			rval = ""
+			# Use some 'en' value of description if the element is localised
+			for it in elems:
+				try:
+					lang = it.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+					if (lang is not None) and ("en" in lang):
+						rval = it.text.encode("utf-8")
+				except KeyError:
+					rval = it.text.encode("utf-8")
+					break
+			if not rval:
+				rval = "No " + tag + " found in config.xml."
+			return rval
+
+		name = _get_best_elem (root, "name")
 		version = root.find("[@version]")
 		if version is not None:
 			version = root.attrib["version"]
+			#  CRX version need to be of the form 12.34.454.23232
+			#  P&C version could be any string that has a number and such
+			re.sub(r'[^\d\.]+','.',version)
+			version = version.strip('.')
 		else:
 			version = "1.0.0.1"
 		id = root.find("[@id]")
 		if id is not None:
 			id = root.attrib["id"]
-		description = root.find("{http://www.w3.org/ns/widgets}description")
-		if description is not None:
-			description = description.text.encode("utf-8")
-		else:
-			description = "No description found in config.xml."
+		description = _get_best_elem (root, "description")
 		accesslist = root.findall("{http://www.w3.org/ns/widgets}access")
 		accessorigins = []
 		for acs in accesslist:
@@ -117,19 +149,19 @@ class Oex2Crx:
 			if icon.find("[@src]") is not None:
 				iconfile = icon.attrib["src"]
 
-		shimWrap = self._shimWrap
+		shim_wrap = self._shim_wrap
 		# parsing includes and excludes from the included scripts
 		# Can excludes be used somewhere in manifest.json?
 		includes = []
 		excludes = []
 		injscrlist  = []
-		injscrData = ""
+		inj_scr_data = ""
 		inj_scripts  = ""
 		matches = ""
 		discards = ""
-		hasPopup = False
-		hasOption = False
-		hasInjScrs = False
+		has_popup = False
+		has_option = False
+		has_injscrs = False
 		resources = ""
 		merge_scripts = False
 		for it in oex.infolist():
@@ -144,25 +176,25 @@ class Oex2Crx:
 				# file and wrapped in an opera.isReady() function. Also this new
 				# file needs to be put in the indexdoc as a script and others
 				# removed
-				data = shimWrap(data, "index", oex, crx)
+				data = shim_wrap(data, "index", oex, crx)
 			elif it.filename == popupdoc:
 				# same as with indexdoc
-				hasPopup = True
-				data = shimWrap(data, "popup", oex, crx)
+				has_popup = True
+				data = shim_wrap(data, "popup", oex, crx)
 			elif it.filename == optionsdoc:
 				# same as with indexdoc
-				hasOption = True
-				data = shimWrap(data, "option", oex, crx)
+				has_option = True
+				data = shim_wrap(data, "option", oex, crx)
 			elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
-				hasInjScrs = True
+				has_injscrs = True
 				f_includes = []
 				f_excludes = []
 				# add individual file names to the content_scripts value
 				if not merge_scripts:
 					inj_scripts += ('"' + it.filename + '",')
 				# store the script file name to add it to manifest's content_scripts section
-				if merge_scripts is True:
-					injscrData += unicode(oex.read(it.filename), "utf-8")
+				if merge_scripts:
+					inj_scr_data += unicode(oex.read(it.filename), "utf-8")
 				if debug: print 'Included script:', it.filename
 				pos = data.find("==/UserScript==")
 				if pos != -1:
@@ -183,8 +215,9 @@ class Oex2Crx:
 					f_includes = ["http://*/*", "https://*/*"]
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
-				# fix (or try to) variable scope issue
-				data = self._fixVarScoping(data)
+				data = unicode(data, 'utf-8')
+				if debug: print 'Fixing variables in ', it.filename
+				data = self._update_scopes(data)
 				# wrap all scripts inside opera.isReady()
 				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
@@ -201,28 +234,28 @@ class Oex2Crx:
 				except UnicodeEncodeError:
 					crx.writestr(it.filename, data.encode("utf-8"))
 
-		if hasInjScrs:
+		if has_injscrs:
 			if debug: print 'Has injected scripts'
 			# Merged injected scripts
-			if merge_scripts and injscrData:
-				injscrData = "opera.isReady(function ()\n{\n" + injscrData + "\n});\n"
-				crx.writestr("allscripts_injected.js", injscrData.encode("utf-8"))
+			if merge_scripts and inj_scr_data:
+				inj_scr_data = "opera.isReady(function ()\n{\n" + inj_scr_data + "\n});\n"
+				crx.writestr("allscripts_injected.js", inj_scr_data.encode("utf-8"))
 			# add injected script shim if we have any includes or excludes
 			try:
-				crx.getinfo(oexInjShim)
+				crx.getinfo(oex_injscr_shim)
 			except KeyError:
-				injfh = open(oexInjShim, 'r')
+				injfh = open(oex_injscr_shim, 'r')
 				if injfh:
 					injData = injfh.read()
-					crx.writestr(oexInjShim, injData)
+					crx.writestr(oex_injscr_shim, injData)
 					injfh.close()
 				else:
-					print "Could not open " + oexInjShim
+					print "Could not open " + oex_injscr_shim
 
 			if merge_scripts:
-				inj_scripts = '"' + oexInjShim  + '", "allscripts_injected.js"'
+				inj_scripts = '"' + oex_injscr_shim  + '", "allscripts_injected.js"'
 			else:
-				inj_scripts = '"' + oexInjShim  + '", ' + inj_scripts
+				inj_scripts = '"' + oex_injscr_shim  + '", ' + inj_scripts
 
 			for s in includes:
 				matches = matches + '"' + s + '",'
@@ -241,19 +274,15 @@ class Oex2Crx:
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
 		if iconfile is not None:
 			manifest += ',\n"icons" : {"128" : "' + iconfile + '"}';
-		if hasPopup:
+		if has_popup:
 			manifest += ',\n"browser_action" : {"default_popup" : "popup.html"}';
-		if hasOption:
+		if has_option:
 			manifest += ',\n"options_page" : "options.html"';
-		if hasInjScrs:
-#			manifest += ',\n"content_scripts" : [{"matches" : [' + matches + '], "js": [' + inj_scripts + ']'
-#			if discards:
-#				manifest += ', "exclude_matches": [' + discards + ']'
-#			manifest += ', "run_at": "document_start"}]'
+		if has_injscrs:
 			# create separate entries for all injected scripts
 			csrs = ""
 			for cs in injscrlist:
-				csrs += '\n{"js": ["' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]) + ', "run_at": "document_start"},'
+				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start"},'
 			csrs = csrs[:-1]
 			manifest += ',\n"content_scripts": [' + csrs + ']'
 
@@ -270,49 +299,32 @@ class Oex2Crx:
 		if debug: print "Manifest: ", manifest
 		crx.writestr("manifest.json", manifest)
 
-	def _fixVarScoping(self, scriptdata):
+	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
+
 		try:
-			from slimit.parser import Parser
-			from slimit import ast
-		except ImportError:
-			print "ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'. Note that the crx package created might not work correctly."
+			jstree = JSParser().parse(scriptdata)
+		except:
+			print "ERROR: script parsing failed. Some scripts might need manual fixing."
 			return scriptdata
 
-		try:
-			jstree = Parser().parse(scriptdata)
-			# List the functions that are supposed to be in global scope
-			globalfuncs = {}
-			for node in jstree.children():
-				if isinstance(node, ast.VarStatement):
-					# print 'isvar?:', c, c.children(), c.to_ecma()
-					vdecls = node.children()
-					for vd in vdecls:
-						# export the statement into global scope
-						# E.g. -
-						# var foo = function () {....} is converted to var foo = window["foo"] = function () { ... }
-						# var foo = 43; is converted to var foo = window["foo"] = 43
-						# function baz(arg1,...) {} is converted into window["baz"] = function baz (args) {}
-						if debug: print 'Variable declaration:', vd, ', identifier:', vd.identifier.value , ',initialiser:', vd.initializer #, ',ecma:' , vd.to_ecma()
-						if isinstance(vd, ast.VarDecl):
-							idv = vd.identifier.value
-							# ugly hack to export into global scope, but it works!
-							vd.identifier.value += (' = window["' + vd.identifier.value + '"]')
-				if isinstance(node, ast.FuncDecl):
-					globalfuncs[node.identifier.value] = node.to_ecma()
-					if debug: print 'Func declaration', node, ', identifier:', node.identifier.value, ',elems:', node.elements #, ', ecma:', node.to_ecma()
+		walker = ASTWalker(debug)
+		aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
+		scriptdata = jstree.to_ecma()
+		for rval in walker._get_replacements(jstree, aliases):
+			if debug: print 'walker ret:', rval
+			if isinstance(rval, list):
+				rdict = rval[0]
+			elif isinstance(rval, dict):
+				rdict = rval
+			try:
+				for key in rdict:
+					if rdict[key]['text'] and rdict[key]['textnew']:
+						scriptdata = scriptdata.replace(rdict[key]['text'], rdict[key]['textnew'])
+			except Exception as e:
+				pass
 
-			# Fix global functions in script text
-			scriptdata = jstree.to_ecma()
-			for gf in globalfuncs:
-				try:
-					scriptdata = scriptdata.replace(globalfuncs[gf], 'window["' + gf + '"] = ' + globalfuncs[gf], 1)
-				except Exception as e:
-					print "Threw exception in func. scope fixer:", e
-
-		except Exception as e:
-			print 'ERROR: Threw exception in global scope mangler. The scripts in the crx package might not work correctly.', e
 
 		return scriptdata
 
@@ -335,22 +347,18 @@ class Oex2Crx:
 		print "Done!"
 
 
-	def _shimWrap(self, html, type="index", oex=None,crx=None,merge_scripts=False):
+	def _shim_wrap(self, html, type="index", oex=None,crx=None,merge_scripts=False):
 		"""
 		Applies certain corrections to the HTML source passed to this method.
 		Specifically adds the relevant shim script, wraps all script text
 		within opera.isReady() methods etc. """
-		try:
-			import html5lib
-		except ImportError:
-			print """\nERROR:\nYou need to install module html5lib to get this working.\nThe easy way to do this is to run\neasy_install html5lib\nwhere easy_install is available as part of your Python installation."""
-			sys.exit(3)
 
 		htmlparser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
 		domwalker = html5lib.treewalkers.getTreeWalker("dom")
 		serializer = html5lib.serializer.HTMLSerializer(omit_optional_tags=False,quote_attr_values=True,strip_whitespace=True,use_trailing_solidus=True)
 		doc = htmlparser.parse(html, "utf-8")
-		scriptdata = u""
+		scriptdata = ""
+		inlinescrdata = ""
 		# FIXME: use the correct base for the @src (mostly this is the root [''])
 		# Remove scripts only if we are merging all of them
 		if merge_scripts:
@@ -360,7 +368,7 @@ class Oex2Crx:
 				if sname:
 					if debug: print 'reading script data:', sname
 					try:
-						scriptdata += unicode(oex.read(sname), "utf-8")
+						scriptdata += (oex.read(sname)).encode("utf-8")
 					except KeyError:
 						print "The file " + sname + " was not found in archive."
 				else: # could be an inline script
@@ -368,28 +376,45 @@ class Oex2Crx:
 					if (scr.childNodes[0]):
 						scriptdata += scr.childNodes[0].nodeValue
 				scr.parentNode.removeChild(scr)
+		else:
+			# move inline scripts into a new external script
+			inlinescrdata = ""
+			for scr in doc.getElementsByTagName("script"):
+				sname = scr.getAttribute("src")
+				if not sname:
+					if (scr.childNodes[0]):
+						sd = scr.childNodes[0].nodeValue.strip()
+						if sd:
+							inlinescrdata += sd
+							scr.parentNode.removeChild(scr)
+
+			if inlinescrdata:
+				# not more than one per type, well
+				crx.writestr("allinlines_" + type + ".js", inlinescrdata)
+
 		shim = doc.createElement("script")
 		if type == "index":
 			if merge_scripts:
 				oscr = "allscripts_background.js"
-			shim.setAttribute("src", oexBgShim)
-			bgdata = self._getShimData(oexBgShim)
+			shim.setAttribute("src", oex_bg_shim)
+			bgdata = self._get_shim_data(oex_bg_shim)
 			try:
-				crx.getinfo(oexBgShim)
+				crx.getinfo(oex_bg_shim)
 			except KeyError:
-				crx.writestr(oexBgShim, bgdata)
+				crx.writestr(oex_bg_shim, bgdata)
 		elif type == "popup" or type == "option":
 			# Hopefully there would be only one popup.html or options.html in
 			# the package (Localisation ~!~!~!~)
 			if merge_scripts:
 				oscr = "allscripts_" + type + ".js"
-			shim.setAttribute("src", oexPPShim)
-			ppdata = self._getShimData(oexPPShim)
+
+			shim.setAttribute("src", oex_page_shim)
+			ppdata = self._get_shim_data(oex_page_shim)
 			# add popup shim only if it hasn't been added already
 			try:
-				crx.getinfo(oexPPShim)
+				crx.getinfo(oex_page_shim)
 			except KeyError:
-				crx.writestr(oexPPShim, ppdata)
+				crx.writestr(oex_page_shim, ppdata)
 
 		if merge_scripts:
 			allscr = doc.createElement("script")
@@ -398,20 +423,32 @@ class Oex2Crx:
 			allscr.appendChild(tx1)
 		tx2 = doc.createTextNode(" ")
 		shim.appendChild(tx2)
+
+		if inlinescrdata:
+			inscr = doc.createElement("script")
+			inscr.setAttribute("src", "allinlines_" + type + ".js")
+			ti = doc.createTextNode(" ")
+			inscr.appendChild(ti)
+
+		# add scripts as necessary
 		head = doc.getElementsByTagName("head")
 		if head is not None:
 			head = head[0]
 			head.insertBefore(shim, head.firstChild)
 			if merge_scripts:
 				head.appendChild(allscr)
+			if inlinescrdata:
+				head.appendChild(inscr)
 		else:
 			doc.documentElement.insertBefore(shim, doc.documentElement.firstChild)
 			if merge_scripts:
 				doc.documentElement.appendChild(allscr)
+			if inlinescrdata:
+				doc.documentElement.appendChild(inscr)
 		# scripts are read and written here only if they are merged
 		# if not, they are varscopefixed and added in the routine where other files are added.
 		if merge_scripts:
-			scriptdata = self._fixVarScoping(scriptdata.encode("utf-8", "backslashreplace"))
+			scriptdata = self._update_scopes(scriptdata.encode("utf-8","backslashreplace"))
 			scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
 			crx.writestr(oscr, scriptdata)
 		return serializer.render(domwalker(doc))
@@ -424,7 +461,7 @@ class Oex2Crx:
 		publen = 0
 		siglen = 0
 		try:
-			import subprocess, shlex
+			import subprocess, shlex, struct
 			password = ""
 			print 'Signing CRX package:\nProvide password to load private key:'
 			password = sys.stdin.readline()
@@ -439,7 +476,7 @@ class Oex2Crx:
 			try:
 				pfh = open("pubkey.der", 'rb')
 				sfh = open(out_file + '.sig', 'rb')
-				if self._is_dir is True:
+				if self._is_dir:
 					ofh = open(out_file + '.crx', 'rb')
 				else:
 					ofh = open(out_file, 'rb')
@@ -452,7 +489,6 @@ class Oex2Crx:
 				crxdata = ofh.read()
 				ofh.close()
 				ofh = open(out_file + '.signed.crx', 'wb')
-				import struct
 				publen = struct.pack("<L", len(pubdata))
 				siglen = struct.pack("<L", len(sigdata))
 				signedcrx += (publen + siglen + pubdata + sigdata + crxdata)
@@ -465,7 +501,7 @@ class Oex2Crx:
 		except Exception as e:
 				print "Signing of " + out_file + " failed, ", e
 
-	def _getShimData(self, shim):
+	def _get_shim_data(self, shim):
 		data = None
 		try:
 			sfh = open(shim,'r')
@@ -490,29 +526,8 @@ def main(args = None):
 	#TODO: argparser.add_argument('-u', '--update-check', default=False, action='store_true', help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
 
 	args = argparser.parse_args()
-#	print args
-#	exit()
-
-#	args = sys.argv[1:]
-#	in_file = None
-#	out_file = None
-#	key_file = None
-#
-#	if len(args) > 3:
-#		key_file = args[1]
-#		in_file = args[2]
-#		out_file = args[3]
-#	elif len(args) == 2:
-#		in_file = args[0]
-#		out_file = args[1]
-#		key_file = None
-#	else:
-#		print USAGE
-#		sys.exit(1)
-
-	#TODO: Handle the case where out_file path is a directory
 	global debug
-	if args.debug is True:
+	if args.debug:
 		debug = True
 	convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.isdir)
 	convertor.convert();
