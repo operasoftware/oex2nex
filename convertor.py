@@ -26,6 +26,7 @@ indexdoc = "index.html"
 popupdoc = "popup.html"
 optionsdoc = "options.html"
 shim_dir = "oex_shim/"
+shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/" #"http://addons.opera.com/tools/oex_shim/"
 oex_bg_shim =  shim_dir + "operaextensions_background.js"
 oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
@@ -513,6 +514,57 @@ class Oex2Crx:
 			sys.exit(4)
 		return data
 
+def fetch_shims():
+	""" Download shim files from remote server """
+	import urllib2
+	attempts = 0
+	shims = iter(("operaextensions_background.js", "operaextensions_popup.js", "operaextensions_injectedscript.js"))
+	shim = shims.next()
+	url = shim_remote + shim
+	while attempts < 10:
+		attempts +=1
+		try:
+			res = urllib2.urlopen(url)
+			if res.code == 200:
+				try:
+					if not os.path.exists(shim_dir):
+						os.mkdir(shim_dir)
+					elif os.path.isdir(shim_dir):
+						fh = open(shim_dir + shim, 'w')
+						fh.write(res.read())
+						fh.close()
+				except Exception as e:
+					sys.exit(e)
+			else:
+				if debug: print 'Response:', res.code
+			try:
+				shim = shims.next()
+			except StopIteration:
+				break
+			url = shim_remote + shim
+		except urllib2.HTTPError as ex:
+			if ex.code == 401:
+				if debug: print 'HTTP Authentication required:', ex.code, ex.msg, ex.hdrs
+				auth_type = ex.hdrs["WWW-Authenticate"].split()[0]
+				realm = ex.hdrs["WWW-Authenticate"].split('=')[1]
+				realm = realm.strip('"')
+				if auth_type == "Basic":
+					auth_handler = urllib2.HTTPBasicAuthHandler()
+					print "Basic auth: Realm: ", realm
+					print "Enter username:"
+					usr = sys.stdin.readline()
+					usr = usr.strip("\n")
+					print "Enter password:"
+					pwd = sys.stdin.readline()
+					pwd = pwd.strip("\n")
+					auth_handler.add_password(realm=realm, uri=shim_remote,user=usr,passwd=pwd)
+					opener = urllib2.build_opener(auth_handler)
+					urllib2.install_opener(opener)
+					continue
+			else:
+				print 'Threw :', ex , ' when fetching ', url
+
+
 def main(args = None):
 	import argparse
 	if len(sys.argv) < 3:
@@ -523,12 +575,14 @@ def main(args = None):
 	argparser.add_argument('out_file', nargs='?', help="Output file path (a .crx file or a directory)")
 	argparser.add_argument('-x', '--isdir', action='store_true', default=False, help="Output path is a directory")
 	argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
-	#TODO: argparser.add_argument('-u', '--update-check', default=False, action='store_true', help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
+	argparser.add_argument('-f', '--fetch', default=False, action='store_true', help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
 
 	args = argparser.parse_args()
 	global debug
 	if args.debug:
 		debug = True
+	if args.fetch:
+		fetch_shims()
 	convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.isdir)
 	convertor.convert();
 	sys.exit(0)
