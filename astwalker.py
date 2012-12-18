@@ -1,9 +1,11 @@
+#!python
+
 try:
 	from slimit.parser import Parser
 	from slimit import ast
 	from slimit.visitors.nodevisitor import NodeVisitor
 except ImportError:
-	print "ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'. Note that the crx package created might not work correctly."
+	print("ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'. Note that the crx package created might not work correctly.")
 	sys.exit(1)
 
 import re
@@ -43,8 +45,6 @@ class ASTWalker(NodeVisitor):
 				if debug: yield ['reg:', scope, child, child.to_ecma()]
 				# The replacements need to be done at VarStatement level
 				if isinstance(child, ast.VarStatement):
-					# stree.append(child)
-				#	print 'ee:', child.to_ecma()
 					ve = vef = child.to_ecma()
 					for vd in child:
 						if isinstance(vd, ast.VarDecl):
@@ -79,10 +79,10 @@ class ASTWalker(NodeVisitor):
 					# var prefs = widget.preferences; ...; prefs.foo = 34; (we need to convert the .foo to setItem('foo', 34)
 					for label in aliases["preferences"]:
 						if (ce.find(label) > -1):
-							if debug: print 'pref label:', label
+							if debug: print('pref label:', label)
 							datf = dada = daid = val = None
 							for da in child:
-								if debug: print 'dotaccessor:', da, da.to_ecma()
+								if debug: print('dotaccessor:', da, da.to_ecma())
 								if isinstance(da, ast.DotAccessor):
 									dat = da.to_ecma()
 									for dac in da:
@@ -96,7 +96,7 @@ class ASTWalker(NodeVisitor):
 								datf = dada + '.setItem("' + daid + '", ' + val + ');'
 								yield [{"prefs": {"scope": scope, "node": child, "text": child.to_ecma(), "textnew" : datf, "aliases": aliases}}]
 							elif debug:
-								print "Entered preferences finder but failed to find one; code", child.to_ecma()
+								print("Entered preferences finder but failed to find one; code", child.to_ecma())
 							# not much chance that we would again match at the same place
 							break
 				if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
@@ -115,4 +115,4 @@ class ASTWalker(NodeVisitor):
 				for subchild in self._get_replacements(child, aliases, scope+1):
 					yield subchild
 		except Exception as e:
-			print 'ERROR: Threw exception in script fixer. The scripts in the crx package might not work correctly.', e
+			print('ERROR: Threw exception in script fixer. The scripts in the crx package might not work correctly.', e)
