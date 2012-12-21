@@ -50,6 +50,7 @@ var delayedExecuteEvents = [
   // Example:
   // { 'target': opera.extension, 'eventName': 'message', 'eventObj': event }
 ];
+
 /**
  * rsvp.js
  *
@@ -275,6 +276,16 @@ var delayedExecuteEvents = [
 
  EventTarget.mixin(Promise.prototype);
 
+function OError(name, msg, code) {
+  Error.call(this);
+  Error.captureStackTrace(this, arguments.callee);
+  this.name = name || "Error";
+  this.code = code || -1;
+  this.message = msg || "";
+};
+
+OError.prototype.__proto__ = Error.prototype;
+
 var OEvent = function(eventType, eventProperties) {
 
   var evt = document.createEvent("Event");
@@ -306,103 +317,17 @@ OEventTarget.prototype.removeEventListener = function(eventName, callback, useCa
   this.off(eventName, callback); // no useCapture
 }
 
-OEventTarget.prototype.fireEvent = function( oexEventObj ) {
+OEventTarget.prototype.dispatchEvent = function( eventObj ) {
 
-  var eventName = oexEventObj.type;
+  var eventName = eventObj.type;
 
   // Register an onX functions registered for this event, if any
   if(typeof this[ 'on' + eventName.toLowerCase() ] === 'function') {
     this.on( eventName, this[ 'on' + eventName.toLowerCase() ] );
   }
 
-  this.trigger( eventName, oexEventObj );
+  this.trigger( eventName, eventObj );
 
-};
-
-var OPromise = function() {
-
-  Promise.call( this );
-  
-  // General enqueue/dequeue infrastructure
-
-  this._queue = [];
-  this.resolved = false;
-
-  this.on('promise:resolved', function() {
-
-    // Mark this object as resolved
-    this.resolved = true;
-
-    // Run next enqueued action on this object, if any
-    this.dequeue();
-  }.bind(this));
-
-};
-
-OPromise.prototype = Object.create( Promise.prototype );
-
-// Add OEventTarget helper functions to OPromise prototype
-for(var i in OEventTarget.prototype) {
-  OPromise.prototype[i] = OEventTarget.prototype[i];
-}
-
-/*
-OPromise.prototype.addEventListener = OPromise.prototype.on;
-
-OPromise.prototype.removeEventListener = OPromise.prototype.off;
-
-OPromise.prototype.fireEvent = function( oexEventObj ) {
-
-  var eventName = oexEventObj.type;
-
-  // Register an onX functions registered for this event
-  if(typeof this[ 'on' + eventName.toLowerCase() ] === 'function') {
-    this.on( eventName, this[ 'on' + eventName.toLowerCase() ] );
-  }
-
-  this.trigger( eventName, oexEventObj );
-
-}*/
-
-OPromise.prototype.enqueue = function() {
-
-  // Must at least provide a method name to queue
-  if(arguments.length < 1) {
-    return;
-  }
-  var methodName = arguments[0];
-
-  var methodArgs = [];
-
-  if(arguments.length > 1) {
-    for(var i = 1, l = arguments.length; i < l; i++) {
-      methodArgs.push( arguments[i] );
-    }
-  }
-
-  // Add provided action item to the queue
-  this._queue.push( { 'action': methodName, 'args': methodArgs } );
-
-  //console.log("Enqueue on obj[" + this._operaId + "] queue length = " + this._queue.length);
-};
-
-OPromise.prototype.dequeue = function() {
-  // Select first queued action item
-  var queueItem = this._queue[0];
-
-  if(!queueItem) {
-    return;
-  }
-
-  // Remove fulfilled action from the queue
-  this._queue.splice(0, 1);
-
-  // Fulfil action item
-  if( this[ queueItem.action ] ) {
-    this[ queueItem.action ].apply( this, queueItem.args );
-  }
-
-  //console.log("Dequeue on obj[" + this._operaId + "] queue length = " + this._queue.length);
 };
 
 var OMessagePort = function( isBackground ) {
@@ -420,7 +345,7 @@ var OMessagePort = function( isBackground ) {
     
     this._localPort.onDisconnect.addListener(function() {
     
-      this.fireEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
+      this.dispatchEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
       
       this._localPort = null;
       
@@ -433,7 +358,7 @@ var OMessagePort = function( isBackground ) {
       if(_message && _message.action && _message.action.indexOf('___O_') === 0) {
 
         // Fire controlmessage events *immediately*
-        this.fireEvent( new OEvent(
+        this.dispatchEvent( new OEvent(
           'controlmessage', 
           { 
             "data": _message,
@@ -451,7 +376,7 @@ var OMessagePort = function( isBackground ) {
         // Fire 'message' event once we have all the initial listeners setup on the page
         // so we don't miss any .onconnect call from the extension page.
         // Or immediately if the shim isReady
-        addDelayedEvent(this, 'fireEvent', [ new OEvent(
+        addDelayedEvent(this, 'dispatchEvent', [ new OEvent(
           'message', 
           { 
             "data": _message,
@@ -470,7 +395,7 @@ var OMessagePort = function( isBackground ) {
 
     // Fire 'connect' event once we have all the initial listeners setup on the page
     // so we don't miss any .onconnect call from the extension page
-    addDelayedEvent(this, 'fireEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
+    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
     
   }
   
@@ -512,7 +437,7 @@ var OEX = opera.extension = opera.extension || new OperaExtension();
 
 var OEC = opera.contexts = opera.contexts || {};
 
-OperaExtension.prototype.getFile = opera.extension.getFile || function(path) {
+OperaExtension.prototype.getFile = function(path) {
   var response = null;
 
   if(typeof path != "string")return response;
@@ -717,6 +642,14 @@ var OWidgetObjProxy = function() {
     "action": "___O_widget_setup_REQUEST"
   });
   
+  // When the page unloads, take all items that have been 
+  // added with preference.blah or preferences['blah']
+  // (instead of the catachable .setItem) and push these
+  // preferences to the background script
+  global.addEventListener('beforeunload', function() {
+    // TODO implement widget.preferences page unload behavior
+  }, false);
+  
 };
 
 OWidgetObjProxy.prototype = Object.create( OEventTarget.prototype );
@@ -759,10 +692,9 @@ OWidgetObjProxy.prototype.__defineGetter__('preferences', function() {
 });
 
 // Add Widget API directly to global window
-global.widget = global.widget || (function() {
-  return new OWidgetObjProxy();
-})();
-  if (window.opera) {
+global.widget = global.widget || new OWidgetObjProxy();
+
+  if (global.opera) {
     isReady = true;
 
     // Make scripts also work in Opera <= version 12
@@ -790,14 +722,14 @@ global.widget = global.widget || (function() {
       var hasFired_DOMContentLoaded = false,
           hasFired_Load = false;
 
-      document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
+      global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
         hasFired_DOMContentLoaded = true;
-        document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
+        global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
       }, true);
     
-      window.addEventListener("load", function handle_Load() {
+      global.addEventListener("load", function handle_Load() {
         hasFired_Load = true;
-        window.removeEventListener("load", handle_Load, true);
+        global.removeEventListener("load", handle_Load, true);
       }, true);
 
       function interceptAddEventListener(target, _name) {
@@ -813,7 +745,7 @@ global.widget = global.widget || (function() {
             }
           
             if (isReady) {
-              fn.call(window);
+              fn.call(global);
             } else {
               fns[_name.toLowerCase()].push(fn);
             }
@@ -831,9 +763,9 @@ global.widget = global.widget || (function() {
 
       }
 
-      interceptAddEventListener(window, 'load');
-      interceptAddEventListener(document, 'domcontentloaded');
-      interceptAddEventListener(window, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+      interceptAddEventListener(global, 'load');
+      interceptAddEventListener(global.document, 'domcontentloaded');
+      interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
 
       function fireEvent(name, target) {
         var evtName = name.toLowerCase();
@@ -847,7 +779,7 @@ global.widget = global.widget || (function() {
       }
 
       function ready() {
-        window.setTimeout(function() {
+        global.setTimeout(function() {
 
           if (isReady) {
             return;
@@ -855,7 +787,7 @@ global.widget = global.widget || (function() {
 
           // Handle queued opera 'isReady' event functions
           for (var i = 0, len = fns['isready'].length; i < len; i++) {
-            fns['isready'][i].call(window);
+            fns['isready'][i].call(global);
           }
           fns['isready'] = []; // clear
           
@@ -871,7 +803,7 @@ global.widget = global.widget || (function() {
             // (always synthesized in Chromium Content Scripts)
             if (hasFired_DOMContentLoaded || hasFired_Load || currentTime >= domContentLoadedTimeoutOverride) {
               
-              fireEvent('domcontentloaded', document);
+              fireEvent('domcontentloaded', global.document);
               
               if(currentTime >= domContentLoadedTimeoutOverride) {
                 console.warn('document.domcontentloaded event fired on check timeout');
@@ -902,7 +834,7 @@ global.widget = global.widget || (function() {
                   _delayedExecuteEvents = [];
 
                 } else {
-                  window.setTimeout(function() {
+                  global.setTimeout(function() {
                     fireLoad();
                   }, 50);
                 }
@@ -910,7 +842,7 @@ global.widget = global.widget || (function() {
               })();
               
             } else {
-              window.setTimeout(function() {
+              global.setTimeout(function() {
                 fireDOMContentLoaded();
               }, 50);
             }
@@ -941,7 +873,7 @@ global.widget = global.widget || (function() {
             // spin the loop until everything is working
             // or we receive a timeout override (handled
             // in next loop, above)
-            window.setTimeout(function() {
+            global.setTimeout(function() {
               holdReady();
             }, 20);
             return;
@@ -958,7 +890,7 @@ global.widget = global.widget || (function() {
         // execute the function immediately.
         // otherwise, queue it up until isReady
         if (isReady) {
-          fn.call(window);
+          fn.call(global);
         } else {
           fns['isready'].push(fn);
         }

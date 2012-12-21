@@ -46,199 +46,6 @@ var deferredComponentsLoadStatus = {
 };
 
 /**
- * GENERAL OEX SHIM UTILITY FUNCTIONS
- */
- 
-/**
- * Chromium doesn't support complex colors in places so
- * this function will convert colors from rgb, rgba, hsv,
- * hsl and hsla in to hex colors.
- *
- * 'color' is the color string to convert.
- * 'backgroundColorVal' is a background color number (0-255)
- * with which to apply alpha blending (if any).
- */
-function complexColorToHex(color, backgroundColorVal) {
-  
-  if(color === undefined || color === null) {
-    return color;
-  }
-  
-  // Force covert color to String
-  color = color + "";
-  
-  // X11/W3C Color Names List
-  var colorKeywords = { aliceblue: [240,248,255], antiquewhite: [250,235,215], aqua: [0,255,255], aquamarine: [127,255,212],
-  azure: [240,255,255], beige: [245,245,220], bisque: [255,228,196], black: [0,0,0], blanchedalmond: [255,235,205],
-  blue: [0,0,255], blueviolet: [138,43,226], brown: [165,42,42], burlywood: [222,184,135], cadetblue: [95,158,160],
-  chartreuse: [127,255,0], chocolate: [210,105,30], coral: [255,127,80], cornflowerblue: [100,149,237], cornsilk: [255,248,220],
-  crimson: [220,20,60], cyan: [0,255,255], darkblue: [0,0,139], darkcyan: [0,139,139], darkgoldenrod: [184,134,11],
-  darkgray: [169,169,169], darkgreen: [0,100,0], darkgrey: [169,169,169], darkkhaki: [189,183,107], darkmagenta: [139,0,139],
-  darkolivegreen: [85,107,47], darkorange: [255,140,0], darkorchid: [153,50,204], darkred: [139,0,0], darksalmon: [233,150,122],
-  darkseagreen: [143,188,143], darkslateblue: [72,61,139], darkslategray: [47,79,79], darkslategrey: [47,79,79],
-  darkturquoise: [0,206,209], darkviolet: [148,0,211], deeppink: [255,20,147], deepskyblue: [0,191,255], dimgray: [105,105,105],
-  dimgrey: [105,105,105], dodgerblue: [30,144,255], firebrick: [178,34,34], floralwhite: [255,250,240], forestgreen: [34,139,34],
-  fuchsia: [255,0,255], gainsboro: [220,220,220], ghostwhite: [248,248,255], gold: [255,215,0], goldenrod: [218,165,32],
-  gray: [128,128,128], green: [0,128,0], greenyellow: [173,255,47], grey: [128,128,128], honeydew: [240,255,240],
-  hotpink: [255,105,180], indianred: [205,92,92], indigo: [75,0,130], ivory: [255,255,240], khaki: [240,230,140],
-  lavender: [230,230,250], lavenderblush: [255,240,245], lawngreen: [124,252,0], lemonchiffon: [255,250,205],
-  lightblue: [173,216,230], lightcoral: [240,128,128], lightcyan: [224,255,255], lightgoldenrodyellow: [250,250,210],
-  lightgray: [211,211,211], lightgreen: [144,238,144], lightgrey: [211,211,211], lightpink: [255,182,193],
-  lightsalmon: [255,160,122], lightseagreen: [32,178,170], lightskyblue: [135,206,250], lightslategray: [119,136,153],
-  lightslategrey: [119,136,153], lightsteelblue: [176,196,222], lightyellow: [255,255,224], lime: [0,255,0],
-  limegreen: [50,205,50], linen: [250,240,230], magenta: [255,0,255], maroon: [128,0,0], mediumaquamarine: [102,205,170],
-  mediumblue: [0,0,205], mediumorchid: [186,85,211], mediumpurple: [147,112,219], mediumseagreen: [60,179,113],
-  mediumslateblue: [123,104,238], mediumspringgreen: [0,250,154], mediumturquoise: [72,209,204], mediumvioletred: [199,21,133],
-  midnightblue: [25,25,112], mintcream: [245,255,250], mistyrose: [255,228,225], moccasin: [255,228,181], navajowhite: [255,222,173],
-  navy: [0,0,128], oldlace: [253,245,230], olive: [128,128,0], olivedrab: [107,142,35], orange: [255,165,0], orangered: [255,69,0],
-  orchid: [218,112,214], palegoldenrod: [238,232,170], palegreen: [152,251,152], paleturquoise: [175,238,238],
-  palevioletred: [219,112,147], papayawhip: [255,239,213], peachpuff: [255,218,185], peru: [205,133,63], pink: [255,192,203],
-  plum: [221,160,221], powderblue: [176,224,230], purple: [128,0,128], red: [255,0,0], rosybrown: [188,143,143],
-  royalblue: [65,105,225], saddlebrown: [139,69,19], salmon: [250,128,114], sandybrown: [244,164,96], seagreen: [46,139,87],
-  seashell: [255,245,238], sienna: [160,82,45], silver: [192,192,192], skyblue: [135,206,235], slateblue: [106,90,205],
-  slategray: [112,128,144], slategrey: [112,128,144], snow: [255,250,250], springgreen: [0,255,127], steelblue: [70,130,180],
-  tan: [210,180,140], teal: [0,128,128], thistle: [216,191,216], tomato: [255,99,71], turquoise: [64,224,208], violet: [238,130,238],
-  wheat: [245,222,179], white: [255,255,255], whitesmoke: [245,245,245], yellow: [255,255,0], yellowgreen: [154,205,50] };
-
-  // X11/W3C Color Name check
-  var predefinedColor = colorKeywords[ color.toLowerCase() ];
-  if( predefinedColor ) {
-    return "#" + DectoHex(predefinedColor[0]) + DectoHex(predefinedColor[1]) + DectoHex(predefinedColor[2]);
-  }
-
-  // Hex color patterns
-  var hexColorTypes = {
-    "hexLong": /^([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/,
-    "hexShort": /^([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
-  };
-
-  for(var colorType in hexColorTypes) {
-    if(color.match(hexColorTypes[ colorType ]))
-      return color;
-  }
-
-  // Other color patterns
-  var otherColorTypes = [
-    ["rgb", /^rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)$/],
-    ["rgb", /^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d+(?:\.\d+)?|\.\d+)\s*\)$/], // rgba
-    ["hsl", /^hsl\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%\)$/],
-    ["hsl", /^hsla\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%,\s*(\d+(?:\.\d+)?|\.\d+)\s*\)$/], // hsla
-    ["hsv", /^hsv\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%\)$/]
-  ];
-
-  function hueToRgb( p, q, t ) {
-    if ( t < 0 ) {
-      t += 1;
-    }
-    if ( t > 1 ) {
-      t -= 1;
-    }
-    if ( t < 1 / 6 ) {
-      return p + ( q - p ) * 6 * t;
-    }
-    if ( t < 1 / 2 ) {
-      return q;
-    }
-    if ( t < 2 / 3 ) {
-      return p + ( q - p ) * ( 2 / 3 - t ) * 6;
-    }
-    return p;
-  };
-
-  var toRGB = {
-    rgb: function( bits ) {
-      return [ bits[1], bits[2], bits[3], bits[4] || 1 ];
-    },
-    hsl: function( bits ) {
-      var hsl = {
-        h : ( parseInt( bits[ 1 ], 10 ) % 360 ) / 360,
-        s : ( parseInt( bits[ 2 ], 10 ) % 101 ) / 100,
-        l : ( parseInt( bits[ 3 ], 10 ) % 101 ) / 100,
-        a : bits[4] || 1
-      };
-
-      if ( hsl.s === 0 )
-        return [ hsl.l, hsl.l, hsl.l ];
-
-      var q = hsl.l < 0.5 ? hsl.l * ( 1 + hsl.s ) : hsl.l + hsl.s - hsl.l * hsl.s;
-      var p = 2 * hsl.l - q;
-
-      return [
-        ( hueToRgb( p, q, hsl.h + 1 / 3 ) * 256 ).toFixed( 0 ),
-        ( hueToRgb( p, q, hsl.h ) * 256 ).toFixed( 0 ),
-        ( hueToRgb( p, q, hsl.h - 1 / 3 ) * 256 ).toFixed( 0 ),
-        hsl.a
-      ];
-    },
-    hsv: function( bits ) {
-      var rgb = {},
-          hsv = {
-            h : ( parseInt( bits[ 1 ], 10 ) % 360 ) / 360,
-            s : ( parseInt( bits[ 2 ], 10 ) % 101 ) / 100,
-            v : ( parseInt( bits[ 3 ], 10 ) % 101 ) / 100
-          },
-          i = Math.floor( hsv.h * 6 ),
-          f = hsv.h * 6 - i,
-          p = hsv.v * ( 1 - hsv.s ),
-          q = hsv.v * ( 1 - f * hsv.s ),
-          t = hsv.v * ( 1 - ( 1 - f ) * hsv.s );
-
-      switch( i % 6 ) {
-        case 0:
-          rgb.r = hsv.v; rgb.g = t; rgb.b = p;
-          break;
-        case 1:
-          rgb.r = q; rgb.g = hsv.v; rgb.b = p;
-          break;
-        case 2:
-          rgb.r = p; rgb.g = hsv.v; rgb.b = t;
-          break;
-        case 3:
-          rgb.r = p; rgb.g = q; rgb.b = hsv.v;
-          break;
-        case 4:
-          rgb.r = t; rgb.g = p; rgb.b = hsv.v;
-          break;
-        case 5:
-          rgb.r = hsv.v; rgb.g = p; rgb.b = q;
-          break;
-      }
-
-      return [ rgb.r * 256,  rgb.g * 256, rgb.b * 256 ];
-    }
-  };
-
-  function DectoHex( dec ) {
-    var hex = parseInt( dec, 10 );
-    hex = hex.toString(16);
-    return hex == 0 ? "00" : hex;
-  }
-
-  function applySaturation( rgb ) {
-    var alpha = parseFloat(rgb[3] || 1);
-    if((alpha + "") === "NaN" || alpha < 0 || alpha >= 1) return rgb;
-    if(alpha == 0) {
-      return [ 255, 255, 255 ];
-    }
-    return [
-      alpha * parseInt(rgb[0], 10) + (1 - alpha) * (backgroundColorVal || 255),
-      alpha * parseInt(rgb[1], 10) + (1 - alpha) * (backgroundColorVal || 255),
-      alpha * parseInt(rgb[2], 10) + (1 - alpha) * (backgroundColorVal || 255)
-    ]; // assumes background is white (255)
-  }
-
-  for(var i = 0, l = otherColorTypes.length; i < l; i++) {
-    var bits = otherColorTypes[i][1].exec( color );
-    if(bits) {
-      var rgbVal = applySaturation( toRGB[ otherColorTypes[i][0] ]( bits ) );
-      return "#" + DectoHex(rgbVal[0] || 255) + DectoHex(rgbVal[1] || 255) + DectoHex(rgbVal[2] || 255);
-    }
-  }
-  
-  return "#f00"; // default in case of error
-
-};
-/**
  * rsvp.js
  *
  * Author: Tilde, Inc.
@@ -463,6 +270,219 @@ function complexColorToHex(color, backgroundColorVal) {
 
  EventTarget.mixin(Promise.prototype);
 
+function isObjectEmpty(obj) {
+  for(var prop in obj) {
+    if(obj.hasOwnProperty(prop)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * GENERAL OEX SHIM UTILITY FUNCTIONS
+ */
+ 
+/**
+ * Chromium doesn't support complex colors in places so
+ * this function will convert colors from rgb, rgba, hsv,
+ * hsl and hsla in to hex colors.
+ *
+ * 'color' is the color string to convert.
+ * 'backgroundColorVal' is a background color number (0-255)
+ * with which to apply alpha blending (if any).
+ */
+function complexColorToHex(color, backgroundColorVal) {
+  
+  if(color === undefined || color === null) {
+    return color;
+  }
+  
+  // Force covert color to String
+  color = color + "";
+  
+  // X11/W3C Color Names List
+  var colorKeywords = { aliceblue: [240,248,255], antiquewhite: [250,235,215], aqua: [0,255,255], aquamarine: [127,255,212],
+  azure: [240,255,255], beige: [245,245,220], bisque: [255,228,196], black: [0,0,0], blanchedalmond: [255,235,205],
+  blue: [0,0,255], blueviolet: [138,43,226], brown: [165,42,42], burlywood: [222,184,135], cadetblue: [95,158,160],
+  chartreuse: [127,255,0], chocolate: [210,105,30], coral: [255,127,80], cornflowerblue: [100,149,237], cornsilk: [255,248,220],
+  crimson: [220,20,60], cyan: [0,255,255], darkblue: [0,0,139], darkcyan: [0,139,139], darkgoldenrod: [184,134,11],
+  darkgray: [169,169,169], darkgreen: [0,100,0], darkgrey: [169,169,169], darkkhaki: [189,183,107], darkmagenta: [139,0,139],
+  darkolivegreen: [85,107,47], darkorange: [255,140,0], darkorchid: [153,50,204], darkred: [139,0,0], darksalmon: [233,150,122],
+  darkseagreen: [143,188,143], darkslateblue: [72,61,139], darkslategray: [47,79,79], darkslategrey: [47,79,79],
+  darkturquoise: [0,206,209], darkviolet: [148,0,211], deeppink: [255,20,147], deepskyblue: [0,191,255], dimgray: [105,105,105],
+  dimgrey: [105,105,105], dodgerblue: [30,144,255], firebrick: [178,34,34], floralwhite: [255,250,240], forestgreen: [34,139,34],
+  fuchsia: [255,0,255], gainsboro: [220,220,220], ghostwhite: [248,248,255], gold: [255,215,0], goldenrod: [218,165,32],
+  gray: [128,128,128], green: [0,128,0], greenyellow: [173,255,47], grey: [128,128,128], honeydew: [240,255,240],
+  hotpink: [255,105,180], indianred: [205,92,92], indigo: [75,0,130], ivory: [255,255,240], khaki: [240,230,140],
+  lavender: [230,230,250], lavenderblush: [255,240,245], lawngreen: [124,252,0], lemonchiffon: [255,250,205],
+  lightblue: [173,216,230], lightcoral: [240,128,128], lightcyan: [224,255,255], lightgoldenrodyellow: [250,250,210],
+  lightgray: [211,211,211], lightgreen: [144,238,144], lightgrey: [211,211,211], lightpink: [255,182,193],
+  lightsalmon: [255,160,122], lightseagreen: [32,178,170], lightskyblue: [135,206,250], lightslategray: [119,136,153],
+  lightslategrey: [119,136,153], lightsteelblue: [176,196,222], lightyellow: [255,255,224], lime: [0,255,0],
+  limegreen: [50,205,50], linen: [250,240,230], magenta: [255,0,255], maroon: [128,0,0], mediumaquamarine: [102,205,170],
+  mediumblue: [0,0,205], mediumorchid: [186,85,211], mediumpurple: [147,112,219], mediumseagreen: [60,179,113],
+  mediumslateblue: [123,104,238], mediumspringgreen: [0,250,154], mediumturquoise: [72,209,204], mediumvioletred: [199,21,133],
+  midnightblue: [25,25,112], mintcream: [245,255,250], mistyrose: [255,228,225], moccasin: [255,228,181], navajowhite: [255,222,173],
+  navy: [0,0,128], oldlace: [253,245,230], olive: [128,128,0], olivedrab: [107,142,35], orange: [255,165,0], orangered: [255,69,0],
+  orchid: [218,112,214], palegoldenrod: [238,232,170], palegreen: [152,251,152], paleturquoise: [175,238,238],
+  palevioletred: [219,112,147], papayawhip: [255,239,213], peachpuff: [255,218,185], peru: [205,133,63], pink: [255,192,203],
+  plum: [221,160,221], powderblue: [176,224,230], purple: [128,0,128], red: [255,0,0], rosybrown: [188,143,143],
+  royalblue: [65,105,225], saddlebrown: [139,69,19], salmon: [250,128,114], sandybrown: [244,164,96], seagreen: [46,139,87],
+  seashell: [255,245,238], sienna: [160,82,45], silver: [192,192,192], skyblue: [135,206,235], slateblue: [106,90,205],
+  slategray: [112,128,144], slategrey: [112,128,144], snow: [255,250,250], springgreen: [0,255,127], steelblue: [70,130,180],
+  tan: [210,180,140], teal: [0,128,128], thistle: [216,191,216], tomato: [255,99,71], turquoise: [64,224,208], violet: [238,130,238],
+  wheat: [245,222,179], white: [255,255,255], whitesmoke: [245,245,245], yellow: [255,255,0], yellowgreen: [154,205,50] };
+
+  // X11/W3C Color Name check
+  var predefinedColor = colorKeywords[ color.toLowerCase() ];
+  if( predefinedColor ) {
+    return "#" + DectoHex(predefinedColor[0]) + DectoHex(predefinedColor[1]) + DectoHex(predefinedColor[2]);
+  }
+
+  // Hex color patterns
+  var hexColorTypes = {
+    "hexLong": /^([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/,
+    "hexShort": /^([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
+  };
+
+  for(var colorType in hexColorTypes) {
+    if(color.match(hexColorTypes[ colorType ]))
+      return color;
+  }
+
+  // Other color patterns
+  var otherColorTypes = [
+    ["rgb", /^rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)$/],
+    ["rgb", /^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d+(?:\.\d+)?|\.\d+)\s*\)$/], // rgba
+    ["hsl", /^hsl\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%\)$/],
+    ["hsl", /^hsla\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%,\s*(\d+(?:\.\d+)?|\.\d+)\s*\)$/], // hsla
+    ["hsv", /^hsv\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%\)$/]
+  ];
+
+  function hueToRgb( p, q, t ) {
+    if ( t < 0 ) {
+      t += 1;
+    }
+    if ( t > 1 ) {
+      t -= 1;
+    }
+    if ( t < 1 / 6 ) {
+      return p + ( q - p ) * 6 * t;
+    }
+    if ( t < 1 / 2 ) {
+      return q;
+    }
+    if ( t < 2 / 3 ) {
+      return p + ( q - p ) * ( 2 / 3 - t ) * 6;
+    }
+    return p;
+  };
+
+  var toRGB = {
+    rgb: function( bits ) {
+      return [ bits[1], bits[2], bits[3], bits[4] || 1 ];
+    },
+    hsl: function( bits ) {
+      var hsl = {
+        h : ( parseInt( bits[ 1 ], 10 ) % 360 ) / 360,
+        s : ( parseInt( bits[ 2 ], 10 ) % 101 ) / 100,
+        l : ( parseInt( bits[ 3 ], 10 ) % 101 ) / 100,
+        a : bits[4] || 1
+      };
+
+      if ( hsl.s === 0 )
+        return [ hsl.l, hsl.l, hsl.l ];
+
+      var q = hsl.l < 0.5 ? hsl.l * ( 1 + hsl.s ) : hsl.l + hsl.s - hsl.l * hsl.s;
+      var p = 2 * hsl.l - q;
+
+      return [
+        ( hueToRgb( p, q, hsl.h + 1 / 3 ) * 256 ).toFixed( 0 ),
+        ( hueToRgb( p, q, hsl.h ) * 256 ).toFixed( 0 ),
+        ( hueToRgb( p, q, hsl.h - 1 / 3 ) * 256 ).toFixed( 0 ),
+        hsl.a
+      ];
+    },
+    hsv: function( bits ) {
+      var rgb = {},
+          hsv = {
+            h : ( parseInt( bits[ 1 ], 10 ) % 360 ) / 360,
+            s : ( parseInt( bits[ 2 ], 10 ) % 101 ) / 100,
+            v : ( parseInt( bits[ 3 ], 10 ) % 101 ) / 100
+          },
+          i = Math.floor( hsv.h * 6 ),
+          f = hsv.h * 6 - i,
+          p = hsv.v * ( 1 - hsv.s ),
+          q = hsv.v * ( 1 - f * hsv.s ),
+          t = hsv.v * ( 1 - ( 1 - f ) * hsv.s );
+
+      switch( i % 6 ) {
+        case 0:
+          rgb.r = hsv.v; rgb.g = t; rgb.b = p;
+          break;
+        case 1:
+          rgb.r = q; rgb.g = hsv.v; rgb.b = p;
+          break;
+        case 2:
+          rgb.r = p; rgb.g = hsv.v; rgb.b = t;
+          break;
+        case 3:
+          rgb.r = p; rgb.g = q; rgb.b = hsv.v;
+          break;
+        case 4:
+          rgb.r = t; rgb.g = p; rgb.b = hsv.v;
+          break;
+        case 5:
+          rgb.r = hsv.v; rgb.g = p; rgb.b = q;
+          break;
+      }
+
+      return [ rgb.r * 256,  rgb.g * 256, rgb.b * 256 ];
+    }
+  };
+
+  function DectoHex( dec ) {
+    var hex = parseInt( dec, 10 );
+    hex = hex.toString(16);
+    return hex == 0 ? "00" : hex;
+  }
+
+  function applySaturation( rgb ) {
+    var alpha = parseFloat(rgb[3] || 1);
+    if((alpha + "") === "NaN" || alpha < 0 || alpha >= 1) return rgb;
+    if(alpha == 0) {
+      return [ 255, 255, 255 ];
+    }
+    return [
+      alpha * parseInt(rgb[0], 10) + (1 - alpha) * (backgroundColorVal || 255),
+      alpha * parseInt(rgb[1], 10) + (1 - alpha) * (backgroundColorVal || 255),
+      alpha * parseInt(rgb[2], 10) + (1 - alpha) * (backgroundColorVal || 255)
+    ]; // assumes background is white (255)
+  }
+
+  for(var i = 0, l = otherColorTypes.length; i < l; i++) {
+    var bits = otherColorTypes[i][1].exec( color );
+    if(bits) {
+      var rgbVal = applySaturation( toRGB[ otherColorTypes[i][0] ]( bits ) );
+      return "#" + DectoHex(rgbVal[0] || 255) + DectoHex(rgbVal[1] || 255) + DectoHex(rgbVal[2] || 255);
+    }
+  }
+  
+  return "#f00"; // default in case of error
+
+};
+
+function OError(name, msg, code) {
+  Error.call(this);
+  Error.captureStackTrace(this, arguments.callee);
+  this.name = name || "Error";
+  this.code = code || -1;
+  this.message = msg || "";
+};
+
+OError.prototype.__proto__ = Error.prototype;
+
 var OEvent = function(eventType, eventProperties) {
 
   var evt = document.createEvent("Event");
@@ -494,36 +514,22 @@ OEventTarget.prototype.removeEventListener = function(eventName, callback, useCa
   this.off(eventName, callback); // no useCapture
 }
 
-OEventTarget.prototype.fireEvent = function( oexEventObj ) {
+OEventTarget.prototype.dispatchEvent = function( eventObj ) {
 
-  var eventName = oexEventObj.type;
+  var eventName = eventObj.type;
 
   // Register an onX functions registered for this event, if any
   if(typeof this[ 'on' + eventName.toLowerCase() ] === 'function') {
     this.on( eventName, this[ 'on' + eventName.toLowerCase() ] );
   }
 
-  this.trigger( eventName, oexEventObj );
+  this.trigger( eventName, eventObj );
 
 };
 
 var OPromise = function() {
 
   Promise.call( this );
-  
-  // General enqueue/dequeue infrastructure
-
-  this._queue = [];
-  this.resolved = false;
-
-  this.on('promise:resolved', function() {
-
-    // Mark this object as resolved
-    this.resolved = true;
-
-    // Run next enqueued action on this object, if any
-    this.dequeue();
-  }.bind(this));
 
 };
 
@@ -534,64 +540,67 @@ for(var i in OEventTarget.prototype) {
   OPromise.prototype[i] = OEventTarget.prototype[i];
 }
 
-/*
-OPromise.prototype.addEventListener = OPromise.prototype.on;
-
-OPromise.prototype.removeEventListener = OPromise.prototype.off;
-
-OPromise.prototype.fireEvent = function( oexEventObj ) {
-
-  var eventName = oexEventObj.type;
-
-  // Register an onX functions registered for this event
-  if(typeof this[ 'on' + eventName.toLowerCase() ] === 'function') {
-    this.on( eventName, this[ 'on' + eventName.toLowerCase() ] );
+/**
+ * Queue for running multi-object promise-rooted asynchronous 
+ * functions serially
+ */
+var Queue = (function() {
+  var _q = [], _lock = false, _timeout = 1000;
+  
+  function callNext() {
+    _lock = false;
+    dequeue(); // auto-execute next queue item
   }
 
-  this.trigger( eventName, oexEventObj );
+  function dequeue() {
+    if (_lock) {
+      return;
+    }
+    _lock = true; // only allow one accessor at a time
+    
+    var item = _q.shift(); // pop the next item from the queue
 
-}*/
+    if (item === undefined) {
+      _lock = false;
+      return; // end dequeuing
+    }
+    if (item.obj.isResolved) {
+      // execute queue item immediately
+      item.fn.call(item.obj, callNext);
+    } else {
+      if(item.ignoreResolve) {
+        item.fn.call(item.obj, callNext);
+      } else {
+        // break deadlocks
+        var timer = global.setTimeout(function() {
+          console.warn('PromiseQueue deadlock broken with timeout.');
+          console.log(item.obj);
+          console.log(item.obj.isResolved);
+          item.obj.trigger('promise:resolved'); // manual trigger / resolve
+        }, _timeout);
+      
+        // execute queue item when obj resolves
+        item.obj.on('promise:resolved', function() {
+          if(timer) global.clearTimeout(timer);
+        
+          item.obj.isResolved = true; // set too late in rsvp.js
+        
+          item.fn.call(item.obj, callNext);
+        });
+      }
+    }
+  };
 
-OPromise.prototype.enqueue = function() {
-
-  // Must at least provide a method name to queue
-  if(arguments.length < 1) {
-    return;
-  }
-  var methodName = arguments[0];
-
-  var methodArgs = [];
-
-  if(arguments.length > 1) {
-    for(var i = 1, l = arguments.length; i < l; i++) {
-      methodArgs.push( arguments[i] );
+  return {
+    enqueue: function(obj, fn, ignoreResolve) {
+      _q.push({ "obj": obj, "fn": fn, "ignoreResolve": ignoreResolve });
+      dequeue(); // auto-execute next queue item
+    },
+    dequeue: function() {
+      dequeue();
     }
   }
-
-  // Add provided action item to the queue
-  this._queue.push( { 'action': methodName, 'args': methodArgs } );
-
-  //console.log("Enqueue on obj[" + this._operaId + "] queue length = " + this._queue.length);
-};
-
-OPromise.prototype.dequeue = function() {
-  // Select first queued action item
-  var queueItem = this._queue[0];
-
-  if(!queueItem) {
-    return;
-  }
-
-  // Remove fulfilled action from the queue
-  this._queue.splice(0, 1);
-
-  // Fulfil action item
-  if( this[ queueItem.action ] ) {
-    this[ queueItem.action ].apply( this, queueItem.args );
-  }
-
-  //console.log("Dequeue on obj[" + this._operaId + "] queue length = " + this._queue.length);
-};
+})();
 
 var OMessagePort = function( isBackground ) {
 
@@ -608,7 +617,7 @@ var OMessagePort = function( isBackground ) {
     
     this._localPort.onDisconnect.addListener(function() {
     
-      this.fireEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
+      this.dispatchEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
       
       this._localPort = null;
       
@@ -621,7 +630,7 @@ var OMessagePort = function( isBackground ) {
       if(_message && _message.action && _message.action.indexOf('___O_') === 0) {
 
         // Fire controlmessage events *immediately*
-        this.fireEvent( new OEvent(
+        this.dispatchEvent( new OEvent(
           'controlmessage', 
           { 
             "data": _message,
@@ -639,7 +648,7 @@ var OMessagePort = function( isBackground ) {
         // Fire 'message' event once we have all the initial listeners setup on the page
         // so we don't miss any .onconnect call from the extension page.
         // Or immediately if the shim isReady
-        addDelayedEvent(this, 'fireEvent', [ new OEvent(
+        addDelayedEvent(this, 'dispatchEvent', [ new OEvent(
           'message', 
           { 
             "data": _message,
@@ -658,7 +667,7 @@ var OMessagePort = function( isBackground ) {
 
     // Fire 'connect' event once we have all the initial listeners setup on the page
     // so we don't miss any .onconnect call from the extension page
-    addDelayedEvent(this, 'fireEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
+    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
     
   }
   
@@ -697,7 +706,7 @@ var OBackgroundMessagePort = function() {
       
       this._allPorts.splice( portIndex - 1, 1 );
       
-      this.fireEvent( new OEvent('disconnect', { "source": _remotePort }) );
+      this.dispatchEvent( new OEvent('disconnect', { "source": _remotePort }) );
       
     }.bind(this));
     
@@ -708,7 +717,7 @@ var OBackgroundMessagePort = function() {
       if(_message && _message.action && _message.action.indexOf('___O_') === 0) {
 
         // Fire controlmessage events *immediately*
-        this.fireEvent( new OEvent(
+        this.dispatchEvent( new OEvent(
           'controlmessage', 
           { 
             "data": _message,
@@ -726,7 +735,7 @@ var OBackgroundMessagePort = function() {
         // Fire 'message' event once we have all the initial listeners setup on the page
         // so we don't miss any .onconnect call from the extension page.
         // Or immediately if the shim isReady
-        addDelayedEvent(this, 'fireEvent', [ new OEvent(
+        addDelayedEvent(this, 'dispatchEvent', [ new OEvent(
           'message', 
           { 
             "data": _message,
@@ -743,7 +752,7 @@ var OBackgroundMessagePort = function() {
 
     }.bind(this) );
   
-    this.fireEvent( new OEvent('connect', { "source": _remotePort }) );
+    this.dispatchEvent( new OEvent('connect', { "source": _remotePort }) );
   
   }.bind(this));
   
@@ -773,7 +782,7 @@ var OEX = opera.extension = opera.extension || new OperaExtension();
 
 var OEC = opera.contexts = opera.contexts || {};
 
-OperaExtension.prototype.getFile = opera.extension.getFile || function(path) {
+OperaExtension.prototype.getFile = function(path) {
   var response = null;
 
   if(typeof path != "string")return response;
@@ -822,6 +831,12 @@ var OStorage = function () {
   Object.defineProperty(this, "_storage", { value : localStorage });
   
   Object.defineProperty(this, "length", { value : 0, writable:true });
+  
+  // Copy all key/value pairs from localStorage on startup
+  for(var i in localStorage) {
+    this[i] = localStorage[i];
+    this.length++;
+  }
   
   Object.defineProperty(OStorage.prototype, "getItem", { 
     value: function( key ) {
@@ -933,6 +948,9 @@ var OWidgetObj = function() {
   xhr.onreadystatechange = function() {
       if (xhr.readyState == 4) {
           this.properties = JSON.parse(xhr.responseText);
+          
+          // Set extension id from base URL
+          this.properties.id = /^chrome\-extension\:\/\/(.*)\/$/.exec(chrome.extension.getURL(""))[1];
 
           // Set WIDGET_API_LOADED feature to LOADED
           deferredComponentsLoadStatus['WIDGET_API_LOADED'] = true;
@@ -1017,7 +1035,7 @@ OWidgetObj.prototype.__defineGetter__('description', function() {
 });
 
 OWidgetObj.prototype.__defineGetter__('author', function() {
-  return this.properties.author || "";
+  return this.properties.author ? this.properties.author.name || "" : "";
 });
 
 OWidgetObj.prototype.__defineGetter__('authorHref', function() {
@@ -1037,67 +1055,49 @@ OWidgetObj.prototype.__defineGetter__('preferences', function() {
 });
 
 // Add Widget API directly to global window
-global.widget = global.widget || (function() {
-  return new OWidgetObj();
-})();
-BrowserWindowsManager = function() {
+global.widget = global.widget || new OWidgetObj();
+
+var BrowserWindowManager = function() {
 
   OPromise.call(this);
 
-  // Set up 1 mock BrowserWindow at startup
-  this[0] = new BrowserWindow();
-  this.length = 1;
+  this.length = 0;
 
-  this._lastFocusedWindow = this[0];
-
-  // Set up the real BrowserWindow (& BrowserTab) objects currently available
+  // Set up the real BrowserWindow (& BrowserTab) objects available at start up time
   chrome.windows.getAll({
     populate: true
   }, function(_windows) {
 
     var _allTabs = [];
 
-    // Treat the first window specially
-    if (_windows.length > 0) {
-      for (var i in _windows[0]) {
-        this[0].properties[i] = _windows[0][i];
-      }
-
-      // Replace tab properties belonging to this window with real properties
-      var _tabs = [];
-      for (var j = 0, k = _windows[0].tabs.length; j < k; j++) {
-        _tabs[j] = new BrowserTab(_windows[0].tabs[j], this[0]);
-        
-        // Set as the currently focused tab?
-        if(_tabs[j].properties.active == true && this[0].properties.focused == true) {
-          this[0].tabs._lastFocusedTab = _tabs[j];
-          OEX.tabs._lastFocusedTab = _tabs[j];
-        }
-        
-      }
-      this[0].tabs.replaceTabs(_tabs);
-
-      _allTabs = _allTabs.concat(_tabs);
-    }
-
-    for (var i = 1, l = _windows.length; i < l; i++) {
-      this[i] = new BrowserWindow(_windows[i]);
+    for (var i = 0, l = _windows.length; i < l; i++) {
+      var newWindow = new BrowserWindow(_windows[i]);
+      
+      // Set properties not available in BrowserWindow constructor
+      newWindow.properties.id = _windows[i].id;
+      newWindow.properties.incognito = _windows[i].incognito;
+      
+      this[i] = newWindow;
       this.length = i + 1;
-
+      
       // Replace tab properties belonging to this window with real properties
       var _tabs = [];
       for (var j = 0, k = _windows[i].tabs.length; j < k; j++) {
-        _tabs[j] = new BrowserTab(_windows[i].tabs[j], this[i]);
+        _tabs[j] = new BrowserTab(_windows[i].tabs[j], this[i], true);
         
-        // Set as the currently focused tab?
-        if(_tabs[j].properties.active == true && this[i].properties.focused == true) {
-          this[i].tabs._lastFocusedTab = _tabs[j];
-          OEX.tabs._lastFocusedTab = _tabs[j];
-        }
-        
+        // Set properties not available in BrowserTab constructor
+        _tabs[j].properties.id = _windows[i].tabs[j].id;
+        _tabs[j].properties.active = _windows[i].tabs[j].active;
+        _tabs[j].properties.pinned = _windows[i].tabs[j].pinned;
+        _tabs[j].properties.status = _windows[i].tabs[j].status;
+        _tabs[j].properties.title = _windows[i].tabs[j].title;
+        _tabs[j].properties.favIconUrl = _windows[i].tabs[j].favIconUrl;
+        _tabs[j].properties.url = _windows[i].tabs[j].url;
+        _tabs[j].properties.index = _windows[i].tabs[j].index;
+        _tabs[j].properties.incognito = _windows[i].tabs[j].incognito;
       }
       this[i].tabs.replaceTabs(_tabs);
-
+      
       _allTabs = _allTabs.concat(_tabs);
 
     }
@@ -1105,23 +1105,10 @@ BrowserWindowsManager = function() {
     // Replace tabs in root tab manager object
     OEX.tabs.replaceTabs(_allTabs);
 
-    // Set up the correct lastFocused window object
-    chrome.windows.getLastFocused(
-      { populate: false }, 
-      function(_window) {
-        for (var i = 0, l = this.length; i < l; i++) {
-          if (this[i].properties.id === _window.id) {
-            this._lastFocusedWindow = this[i];
-            break;
-          }
-        }
-      }.bind(this)
-    );
-
     // Resolve root window manager
-    this.resolve();
+    this.resolve(true);
     // Resolve root tabs manager
-    OEX.tabs.resolve();
+    OEX.tabs.resolve(true);
 
     // Resolve objects.
     //
@@ -1130,10 +1117,14 @@ BrowserWindowsManager = function() {
     // 2. Window's Tab Manager
     // 3. Window's Tab Manager's Tabs
     for (var i = 0, l = this.length; i < l; i++) {
-      this[i].resolve();
-      this[i].tabs.resolve();
+      this[i].resolve(true);
+      
+      this[i].tabs.resolve(true);
+      
       for (var j = 0, k = this[i].tabs.length; j < k; j++) {
-        this[i].tabs[j].resolve();
+        
+        this[i].tabs[j].resolve(true);
+
       }
     }
     
@@ -1141,62 +1132,89 @@ BrowserWindowsManager = function() {
     deferredComponentsLoadStatus['WINTABS_LOADED'] = true;
 
   }.bind(this));
+  
+  this.addWindow = function(windowId, windowObj) {
+    
+    windowObj.properties.id = windowId;
+    
+    this[this.length] = windowObj;
+    this.length += 1;
+    
+    // Resolve object
+    windowObj.resolve(true);
+    windowObj.tabs.resolve(true);
+    
+    // Fire a new 'create' event on this manager object
+    this.dispatchEvent(new OEvent('create', {
+      browserWindow: windowObj
+    }));
+    
+  };
 
   // Monitor ongoing window events
-  chrome.windows.onCreated.addListener(function(_window) {
+  
+  chrome.windows.onFocusChanged.addListener(function(windowId) {
+      
+      var _prevFocusedWindow = this.getLastFocused();
 
-    // Delay enough so that the create callback can run first in o.e.windows.create() function
-    window.setTimeout(function() {
+      // If no new window is focused, abort here
+      if( windowId !== chrome.windows.WINDOW_ID_NONE ) {
+    
+        // Find and fire focus event on newly focused window
+        for (var i = 0, l = this.length; i < l; i++) {
 
-      var windowFound = false;
+          if (this[i].properties.id == windowId && _prevFocusedWindow !== this[i] ) {
+            
+            this[i].properties.focused = true;
+          
+          } else {
+            
+            this[i].properties.focused = false;
+            
+          }
 
-      // If this window is already registered in the collection then ignore
+        }
+
+      }
+      
+      // Find and fire blur event on currently focused window
       for (var i = 0, l = this.length; i < l; i++) {
-        if (this[i].properties.id == _window.id) {
-          windowFound = true;
+
+        if (this[i].properties.id !== windowId && this[i] == _prevFocusedWindow) {
+        
+          this[i].properties.focused = false;
+        
+          // Fire a new 'blur' event on the window object
+          this[i].dispatchEvent(new OEvent('blur', {
+            browserWindow: _prevFocusedWindow
+          }));
+          
+          // Fire a new 'blur' event on this manager object
+          this.dispatchEvent(new OEvent('blur', {
+            browserWindow: _prevFocusedWindow
+          }));
+          
+          // If something is blurring then we should also fire the
+          // corresponding 'focus' events
+          
+          var _newFocusedWindow = this.getLastFocused();
+          
+          // Fire a new 'focus' event on the window object
+          _newFocusedWindow.dispatchEvent(new OEvent('focus', {
+            browserWindow: _newFocusedWindow
+          }));
+          
+          // Fire a new 'focus' event on this manager object
+          this.dispatchEvent(new OEvent('focus', {
+            browserWindow: _newFocusedWindow
+          }));
+        
           break;
         }
-      }
-
-      // If window was created outside of this framework, add it in and initialize
-      if (!windowFound) {
-        var newBrowserWindow = new BrowserWindow(_window);
-
-        // Convert tab objects to BrowserTab objects
-        var newBrowserTabs = [];
-        for (var i in _window.tabs) {
-
-          var newBrowserTab = new BrowserTab(_window.tabs[i], newBrowserWindow);
-
-          newBrowserTabs.push(newBrowserTab);
-
-        }
-        // Add BrowserTab objects to new BrowserWindow object
-        newBrowserWindow.tabs.replaceTabs(newBrowserTabs);
-
-        this[this.length] = newBrowserWindow;
-        this.length += 1;
-
-        // Resolve objects.
-        //
-        // Resolution of each object in order:
-        // 1. Window
-        // 2. Window's Tab Manager
-        // 3. Window's Tab Manager's Tabs
-        newBrowserWindow.resolve();
-        newBrowserWindow.tabs.resolve();
-        for (var i = 0, l = newBrowserWindow.tabs.length; i < l; i++) {
-          newBrowserWindow.tabs[i].resolve();
-        }
-
-        // Fire a new 'create' event on this manager object
-        this.fireEvent(new OEvent('create', {
-          browserWindow: newBrowserWindow
-        }));
 
       }
-
-    }.bind(this), 200);
+      
+      Queue.dequeue();
 
   }.bind(this));
 
@@ -1212,171 +1230,339 @@ BrowserWindowsManager = function() {
     }
 
     if (deleteIndex > -1) {
+      
+      var removedWindow = this[deleteIndex];
 
-      // Fire a new 'close' event on the closed BrowserWindow object
-      this[deleteIndex].fireEvent(new OEvent('close', {
-        'browserWindow': this[deleteIndex]
-      }));
+      removedWindow.properties.closed = true;
 
-      // Fire a new 'close' event on this manager object
-      this.fireEvent(new OEvent('close', {
-        'browserWindow': this[deleteIndex]
-      }));
+      // Set window tabs collection to empty
+      removedWindow.tabs.replaceTabs([]);
 
-      // Manually splice the deleteIndex_th_ item from the current collection
+      // Manually splice the deleteIndex_th_ item from the current windows collection
       for (var i = deleteIndex, l = this.length; i < l; i++) {
         if (this[i + 1]) {
           this[i] = this[i + 1];
+        } else {
+          delete this[i]; // remove last item
         }
       }
-      delete this[this.length - 1];
       this.length -= 1;
+      
+      // Fire a new 'close' event on the closed BrowserWindow object
+      removedWindow.dispatchEvent(new OEvent('close', {}));
+
+      // Fire a new 'close' event on this manager object
+      this.dispatchEvent(new OEvent('close', {
+        'browserWindow': removedWindow
+      }));
 
     }
-
-  }.bind(this));
-
-  chrome.windows.onFocusChanged.addListener(function(windowId) {
-
-    for (var i = 0, l = this.length; i < l; i++) {
-
-      if (this[i].properties.id == windowId) {
-        this._lastFocusedWindow = this[i];
-        break;
-      }
-
-    }
+    
+    Queue.dequeue();
 
   }.bind(this));
 
 };
 
-BrowserWindowsManager.prototype = Object.create(OPromise.prototype);
+BrowserWindowManager.prototype = Object.create(OPromise.prototype);
 
-BrowserWindowsManager.prototype.create = function(tabsToInject, browserWindowProperties, obj) {
-
-  browserWindowProperties = browserWindowProperties || {};
-
-  var shadowBrowserWindow = obj || new BrowserWindow(browserWindowProperties);
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved) {
-    this.enqueue('create', tabsToInject, browserWindowProperties, shadowBrowserWindow);
-    return shadowBrowserWindow;
+BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProperties) {
+  
+  /*
+  // Support tc-BrowserWindowManager-015 test
+  
+  var isEmpty_TabsToInject = true;
+  
+  if(tabsToInject && Object.prototype.toString.call(tabsToInject) === "[object Array]") {
+    for(var i = 0, l = tabsToInject.length; i < l; i++) {
+      if( !isObjectEmpty(tabsToInject[i]) ) {
+        isEmpty_TabsToInject = false;
+        break;
+      }
+    }
+  }
+  
+  var isEmpty_BrowserWindowProperties = isObjectEmpty(browserWindowProperties || {});
+  
+  // undefined/null tabsToInject w/ non-empty window properties is ok
+  if( !isEmpty_BrowserWindowProperties && (tabsToInject === undefined || tabsToInject === null)) {
+    noTabsToInject = false;
   }
 
-  browserWindowProperties.incognito = browserWindowProperties.private || false;
+  if(isEmpty_TabsToInject && isEmpty_BrowserWindowProperties) {
+    throw new OError(
+      "NotSupportedError", 
+      "Cannot create a new window without providing at least one method parameter.", 
+      DOMException.NOT_SUPPORTED_ERR
+    );
+  }
+  
+  if(!isEmpty_TabsToInject && isEmpty_BrowserWindowProperties) {
+    throw new OError(
+      "NotSupportedError", 
+      "Cannot create a new window without providing at least one window property parameter.", 
+      DOMException.NOT_SUPPORTED_ERR
+    );
+  }
+  
+  if(isEmpty_TabsToInject && !isEmpty_BrowserWindowProperties) {
+    throw new OError(
+      "NotSupportedError", 
+      "Cannot create a new window without providing at least one object (or 'null')", 
+      DOMException.NOT_SUPPORTED_ERR
+    );
+  }*/
 
-  chrome.windows.create(
-    browserWindowProperties, 
-    function(_window) {
-      // Update BrowserWindow properties
-      for (var i in _window) {
-        shadowBrowserWindow.properties[i] = _window[i];
-      }
+  // Create new BrowserWindow object (+ sanitize browserWindowProperties values)
+  var shadowBrowserWindow = new BrowserWindow(browserWindowProperties);
+  
+  var createProperties = {
+    'focused': shadowBrowserWindow.properties.focused,
+    'incognito': shadowBrowserWindow.properties.incognito,
+    'width': shadowBrowserWindow.properties.width,
+    'height': shadowBrowserWindow.properties.height,
+    'top': shadowBrowserWindow.properties.top,
+    'left': shadowBrowserWindow.properties.left
+  };
+  
+  // Add tabs included in the create() call to the newly created
+  // window, if any, based on type
+  var hasTabsToInject = false;
+  
+  var tabsToMove = [];
+  var tabsToCreate = [];
+  
+  if (tabsToInject &&
+        Object.prototype.toString.call(tabsToInject) === "[object Array]" && 
+          tabsToInject.length > 0) {
 
-      // Convert tab objects to BrowserTab objects
-      var browserTabs = [];
+    hasTabsToInject = true;
 
-      if (_window.tabs) {
+    for (var i = 0, l = tabsToInject.length; i < l; i++) {
 
-        for (var i = 0, l = _window.tabs.length; i < l; i++) {
+      if (tabsToInject[i] instanceof BrowserTab) {
 
-          var shadowBrowserTab = new BrowserTab(_window.tabs[i], shadowBrowserWindow);
-
-          browserTabs.push(shadowBrowserTab);
-
-        }
-
-      }
-
-      //shadowBrowserWindow._parent = self;
-      shadowBrowserWindow.tabs.replaceTabs(browserTabs);
-
-      // Add this object to the current collection
-      this[this.length] = shadowBrowserWindow;
-      this.length += 1;
-
-      // Resolution order:
-      // 1. Window
-      // 2. Window's Tab Manager
-      // 3. Window's Tab Manager's Tabs
-      shadowBrowserWindow.resolve();
-
-      shadowBrowserWindow.tabs.resolve();
-
-      // Add tabs included in the create() call to the newly created
-      // window, if any, based on type
-      if (tabsToInject) {
-        for (var i in tabsToInject) {
-
-          if (tabsToInject[i] instanceof BrowserTab) {
-
-            (function(tab) {
-              chrome.tabs.move(
-                tab.properties.id, 
-                {
-                  index: -1,
-                  windowId: _window.id
-                }, function(_tab) {
-                  for (var i in _tab) {
-                    tab.properties[i] = _tab[i];
-                  }
-
-                  tab.resolve();
-                }
-              );
-            })(tabsToInject[i]);
-
-          } else if (tabsToInject[i] instanceof BrowserTabGroup) {
-
-            // TODO Implement BrowserTabGroup object handling here
+        (function(existingBrowserTab, index) {
+          
+          // Remove tab from previous window parent and then 
+          // add it to its new window parent
+          if(existingBrowserTab._windowParent) {
+            existingBrowserTab._windowParent.tabs.removeTab(existingBrowserTab);
+          }
+          
+          // Rewrite tab's BrowserWindow parent
+          existingBrowserTab._windowParent = shadowBrowserWindow;
+          
+          // Rewrite tab's index position in collection
+          existingBrowserTab.properties.index = shadowBrowserWindow.tabs.length;
+          
+          shadowBrowserWindow.tabs.addTab( existingBrowserTab, existingBrowserTab.properties.index);
+          
+          // Don't create the first tab as this will be resolved differently
+          if(index == 0) {
             
-          } else { // Treat as a BrowserTabProperties object by default
-            (function(browserTabProperties) {
+            // Implicitly add the first BrowserTab to the new window
+            createProperties.tabId = existingBrowserTab.properties.id;
+            
+            shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + existingBrowserTab.properties.id;
 
-              var shadowBrowserTab = new BrowserTab(browserTabProperties, shadowBrowserWindow);
+          } else {
 
-              chrome.tabs.create(
-                shadowBrowserTab.properties, 
-                {
-                  index: -1,
-                  windowId: _window.id
-                }, 
-                function(_tab) {
-                  for (var i in _tab) {
-                    shadowBrowserTab.properties[i] = _tab[i];
-                  }
+           // handled in window.create callback function
+           // because we need the window's id property to move
+           // items to this window object 
+           tabsToMove.push(existingBrowserTab);
+              
+          }
+          
+          // move events etc will fire in onMoved listener of RootBrowserTabManager
+          
+        })(tabsToInject[i], i);
+        
+      } else { // Treat as a BrowserTabProperties object by default
 
-                  shadowBrowserTab.resolve();
-                }
-              );
+        (function(browserTabProperties, index) {
+          
+          browserTabProperties = browserTabProperties || {};
+          
+          var newBrowserTab = new BrowserTab(browserTabProperties, shadowBrowserWindow);
+          
+          newBrowserTab.properties.index = i;
 
-              // Register BrowserTab object with the current BrowserWindow object
-              shadowBrowserWindow.tabs.addTabs([shadowBrowserTab]);
+          // Register BrowserTab object with the current BrowserWindow object
+          shadowBrowserWindow.tabs.addTab( newBrowserTab, newBrowserTab.properties.index);
+          
+          // Add object to root store
+          OEX.tabs.addTab( newBrowserTab );
 
-            })(tabsToInject[i]);
+          // set BrowserWindow object's rewriteUrl to first tab's opera id
+          if( index == 0 ) {
+            
+            createProperties.url = shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + newBrowserTab._operaId;
 
+          } else {
+            
+            tabsToCreate.push(newBrowserTab);
+            
           }
 
-        }
+        })(tabsToInject[i], i);
 
       }
 
-      // Fire a new 'create' event on this manager object
-      this.fireEvent(new OEvent('create', {
-        browserWindow: shadowBrowserWindow
-      }));
+    }
 
-      this.dequeue();
+  } else { // we only have one default chrome://newtab tab to set up
+    
+    // setup single new tab and tell onCreated to ignore this item
+    var defaultBrowserTab = new BrowserTab({ active: true }, shadowBrowserWindow);
+    
+    // Register BrowserTab object with the current BrowserWindow object
+    shadowBrowserWindow.tabs.addTab( defaultBrowserTab, defaultBrowserTab.properties.index );
+    
+    // Add object to root store
+    OEX.tabs.addTab( defaultBrowserTab );
+    
+    // set rewriteUrl to windowId
+    shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + shadowBrowserWindow._operaId;
+    
+    createProperties.url = shadowBrowserWindow.rewriteUrl;
+
+  }
+  
+  // Add this object to the current collection
+  this[this.length] = shadowBrowserWindow;
+  this.length += 1;
+  
+  // unfocus all other windows in collection if this window is focused
+  if(shadowBrowserWindow.properties.focused == true ) {
+    for(var i = 0, l = this.length; i < l; i++) {
+      if(this[i] !== shadowBrowserWindow) {
+        this[i].properties.focused = false;
+      }
+    }
+  }
+  
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+
+  chrome.windows.create(
+    createProperties,
+    function(_window) {
+
+      // Update BrowserWindow properties
+      for (var i in _window) {
+        if(i == 'tabs') continue; // don't overwrite tabs!
+        shadowBrowserWindow.properties[i] = _window[i];
+      }
+    
+      // Move any remaining existing tabs to new window
+      // now that we have the window.id property assigned
+      // above in properties copy
+      if( tabsToMove.length > 0 ) {
+      
+        for(var i = 0, l = tabsToMove.length; i < l; i++) {
+        
+          (function(existingBrowserTab) {
+        
+            // Explicitly move anything after the first BrowserTab to the new window
+            Queue.enqueue(existingBrowserTab, function(done) {
+          
+              chrome.tabs.move(
+                this.properties.id, 
+                {
+                  index: this._windowParent.tabs.length,
+                  windowId: this._windowParent.properties.id
+                },
+                function(_tab) {
+                  for (var i in _tab) {
+                    if(i == 'url') continue;
+                    this.properties[i] = _tab[i];
+                  }
+          
+                  done();
+                }.bind(this)
+              );
+            }.bind(existingBrowserTab));
+        
+          })(tabsToMove[i]);
+        
+        }
+      
+      }
+    
+      if( tabsToCreate.length > 0 ) {
+      
+        for(var i = 0, l = tabsToCreate.length; i < l; i++) {
+        
+          (function(newBrowserTab) {
+
+            var tabCreateProps = {
+              'windowId': shadowBrowserWindow.properties.id,
+              'url': newBrowserTab.properties.url || "chrome://newtab/",
+              'active': newBrowserTab.properties.active,
+              'pinned': newBrowserTab.properties.pinned,
+              'index': newBrowserTab.properties.index
+            };
+          
+            Queue.enqueue(this, function(done) {
+            chrome.tabs.create(
+              tabCreateProps, 
+              function(_tab) {
+                for (var i in _tab) {
+                  newBrowserTab.properties[i] = _tab[i];
+                }
+
+                newBrowserTab.resolve(true);
+
+                done();
+              
+              }.bind(shadowBrowserWindow.tabs)
+            );
+            }.bind(this), true);
+          
+            newBrowserTab._windowParent.tabs.dispatchEvent(new OEvent('create', {
+              "tab": newBrowserTab,
+              "prevWindow": newBrowserTab._windowParent,
+              "prevTabGroup": null,
+              "prevPosition": NaN
+            }));
+
+            // Fire a create event at RootTabsManager
+            OEX.tabs.dispatchEvent(new OEvent('create', {
+              "tab": newBrowserTab,
+              "prevWindow": newBrowserTab._windowParent,
+              "prevTabGroup": null,
+              "prevPosition": NaN
+            }));
+          
+          })(tabsToCreate[i]);
+        
+        }
+      
+      }
+      
+      done();
 
     }.bind(this)
   );
-
+  
+  }.bind(this), true);
+  
+  // return shadowBrowserWindow from this function before firing these events!
+  global.setTimeout(function() {
+    
+    // Fire a new 'create' event on this manager object
+    this.dispatchEvent(new OEvent('create', {
+      browserWindow: shadowBrowserWindow
+    }));
+    
+  }.bind(this), 50);
+  
   return shadowBrowserWindow;
 };
 
-BrowserWindowsManager.prototype.getAll = function() {
+BrowserWindowManager.prototype.getAll = function() {
 
   var allWindows = [];
 
@@ -1388,39 +1574,72 @@ BrowserWindowsManager.prototype.getAll = function() {
 
 };
 
-BrowserWindowsManager.prototype.getLastFocused = function() {
+BrowserWindowManager.prototype.getLastFocused = function() {
 
-  return this._lastFocusedWindow;
+  for(var i = 0, l = this.length; i < l; i++) {
+    if(this[i].focused == true) {
+      return this[i];
+    }
+  }
+
+  // default
+  if(this[0]) {
+    this[0].properties.focused = true;
+  }
+  
+  return this[0] || undefined;
 
 };
 
-BrowserWindowsManager.prototype.close = function(browserWindow) {
+BrowserWindowManager.prototype.close = function(browserWindow) {
 
-  chrome.windows.remove(browserWindow.properties.id, function() {
-
-    browserWindow.properties.closed = true;
-    browserWindow.dequeue();
-
-  });
+  if(!browserWindow || !(browserWindow instanceof BrowserWindow)) {
+    return;
+  }
+  
+  browserWindow.close();
 
 };
 
-BrowserWindow = function(browserWindowProperties) {
+var BrowserWindow = function(browserWindowProperties) {
 
   OPromise.call(this);
 
-  this.properties = browserWindowProperties || {};
+  browserWindowProperties = browserWindowProperties || {};
+  
+  this.properties = {
+    'id': undefined, // not settable on create
+    'closed': false, // not settable on create
+    'focused': browserWindowProperties.focused ? !!browserWindowProperties.focused : undefined,
+    // private:
+    'incognito': browserWindowProperties.private ? !!browserWindowProperties.private : undefined,
+    'parent': null,
+    'width': browserWindowProperties.width ? parseInt(browserWindowProperties.width, 10) : undefined,
+    'height': browserWindowProperties.height ? parseInt(browserWindowProperties.height, 10) : undefined,
+    'top': browserWindowProperties.top ? parseInt(browserWindowProperties.top, 10) : undefined,
+    'left': browserWindowProperties.left ? parseInt(browserWindowProperties.left, 10) : undefined
+    // 'tabGroups' not part of settable properties
+    // 'tabs' not part of settable properties
+  };
 
   this._parent = null;
-
-  this._tabGroups = [];
 
   // Create a unique browserWindow id
   this._operaId = Math.floor(Math.random() * 1e16);
 
-  this.tabs = new BrowserTabsManager(this);
-  // TODO Implement BrowserTabGroupsManager interface
-  //this.tabGroups = new BrowserTabGroupsManager( this );
+  this.tabs = new BrowserTabManager(this);
+
+  this.tabGroups = new BrowserTabGroupManager(this);
+  
+  if(this.properties.private !== undefined) {
+    this.properties.incognito = !!this.properties.private;
+    delete this.properties.private;
+  }
+  
+  // Not allowed when creating a new window object
+  if(this.properties.closed !== undefined) {
+    delete this.properties.closed;
+  }
 };
 
 BrowserWindow.prototype = Object.create(OPromise.prototype);
@@ -1431,16 +1650,32 @@ BrowserWindow.prototype.__defineGetter__("id", function() {
 });
 
 BrowserWindow.prototype.__defineGetter__("closed", function() {
-  return this.properties.closed || false;
+  return this.properties.closed !== undefined ? !!this.properties.closed : false;
 });
 
 BrowserWindow.prototype.__defineGetter__("focused", function() {
-  return this.properties.focused || false;
+  return this.properties.focused !== undefined ? !!this.properties.focused : false;
 });
 
 BrowserWindow.prototype.__defineGetter__("private", function() {
-  return this.properties.incognito || false;
+  return this.properties.incognito !== undefined ? !!this.properties.incognito : false;
 });
+
+BrowserWindow.prototype.__defineGetter__("top", function() {
+  return this.properties.top !== undefined ? this.properties.top : -1;
+}); // read-only
+
+BrowserWindow.prototype.__defineGetter__("left", function() {
+  return this.properties.left !== undefined ? this.properties.left : -1;
+}); // read-only
+
+BrowserWindow.prototype.__defineGetter__("height", function() {
+  return this.properties.height !== undefined ? this.properties.height : -1;
+}); // read-only
+
+BrowserWindow.prototype.__defineGetter__("width", function() {
+  return this.properties.width !== undefined ? this.properties.width : -1;
+}); // read-only
 
 BrowserWindow.prototype.__defineGetter__("parent", function() {
   return this._parent;
@@ -1448,136 +1683,190 @@ BrowserWindow.prototype.__defineGetter__("parent", function() {
 
 BrowserWindow.prototype.insert = function(browserTab, child) {
 
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved ||
-        (this._parent && !this._parent.resolved) || !browserTab.resolved ||
-            (child && !child.resolved)) {
-    this.enqueue('insert', browserTab, child);
+  if (!browserTab || !(browserTab instanceof BrowserTab)) { 
     return;
   }
 
-  if (this.closed === true) {
-    throw {
-      name: "Invalid State Error",
-      message: "Current window is in the closed state and therefore is invalid"
-    };
-    return;
+  if (this.properties.closed === true) {
+    throw new OError(
+      "InvalidStateError",
+      "Current window is in the closed state and therefore is invalid",
+      DOMException.INVALID_STATE_ERR
+    );
   }
 
-  var browserTabProperties = {
-    windowId: this.properties.id
+  var moveProperties = {
+    windowId: this.properties.id,
+    index: OEX.windows.length // by default, add to the end of the current window
   };
 
   // Set insert position for the new tab from 'before' attribute, if any
-  if (child && child instanceof BrowserTab) {
+  if (child && (child instanceof BrowserTab)) {
 
     if (child.closed === true) {
-      throw {
-        name: "Invalid State Error",
-        message: "'child' attribute is in the closed state and therefore is invalid"
-      };
-      return;
+      throw new OError(
+        "InvalidStateError",
+        "'child' parameter is in the closed state and therefore is invalid",
+        DOMException.INVALID_STATE_ERR
+      );
     }
 
     if (child._windowParent && child._windowParent.closed === true) {
-      throw {
-        name: "Invalid State Error",
-        message: "Parent window of 'child' attribute is in the closed state and therefore is invalid"
-      };
-      return;
+      throw new OError(
+        "InvalidStateError",
+        "Parent window of 'child' parameter is in the closed state and therefore is invalid",
+        DOMException.INVALID_STATE_ERR
+      );
     }
-    browserTabProperties.windowId = child._windowParent ?
-                                      child._windowParent.properties.id : browserTabProperties.windowId;
-    browserTabProperties.index = child.position;
+    moveProperties.windowId = child._windowParent ?
+                                      child._windowParent.properties.id : moveProperties.windowId;
+    moveProperties.index = child.position;
 
+  } else {
+    // IF we're moving within the same window then index will be length - 1
+    moveProperties.index = moveProperties.index > 0 ? moveProperties.index - 1 : moveProperties.index;
+  }
+  
+  // Detach tab from existing BrowserWindow parent (if any)
+  if (browserTab._windowParent) {
+    browserTab._oldWindowParent = browserTab._windowParent;
+    browserTab._oldIndex = browserTab.properties.index;
+    
+    if(browserTab._oldWindowParent !== this) {
+      browserTab._windowParent.tabs.removeTab( browserTab );
+    }
+  }
+  
+  // Attach tab to new BrowserWindow parent 
+  browserTab._windowParent = this;
+  
+  // Update index within new parent
+  browserTab.properties.index = moveProperties.index;
+  
+  if(this !== browserTab._oldWindowParent) {
+    // Attach tab to new parent
+    this.tabs.addTab( browserTab, browserTab.properties.index );
   }
 
-  if (browserTab instanceof BrowserTab) {
-
-    // Fulfill this action against the current object
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(browserTab, function(done) {
     chrome.tabs.move(
       browserTab.properties.id, 
-      browserTabProperties, 
+      {
+        windowId: moveProperties.windowId || this.properties.id,
+        index: moveProperties.index
+      }, 
       function(_tab) {
-        // Run next enqueued action on this object, if any
-        this.dequeue();
+        done();
       }.bind(this)
     );
-
-  }
-/* else if( browserTab instanceof BrowserTabGroup ) {
-
-    // TODO implement BrowserTabGroup interface
-
-  }*/
+  }.bind(this));
 
 };
 
 BrowserWindow.prototype.focus = function() {
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved || (this._parent && !this._parent.resolved)) {
-    this.enqueue('focus');
-    return;
+  
+  if(this.properties.focused == true || this.properties.closed == true) {
+    return; // already focused or invalid because window is closed
   }
 
-  chrome.windows.update(
-    this.properties.id, {
-      focused: true
-    }, 
-    function() {
-      this.dequeue();
+  // Set BrowserWindow object to focused state
+  this.properties.focused = true;
+  
+  // unset all other window object's focused state
+  for(var i = 0, l = OEX.windows.length; i < l; i++) {
+    if(OEX.windows[i] !== this) {
+      OEX.windows[i].properties.focused = false;
     }
-  );
+  }
+
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    chrome.windows.update(
+      this.properties.id, 
+      { focused: true }, 
+      function() {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
 
 };
 
 BrowserWindow.prototype.update = function(browserWindowProperties) {
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved || (this._parent && !this._parent.resolved)) {
-    this.enqueue('update', browserWindowProperties);
-    return;
-  }
-
-  for (var i in browserWindowProperties) {
-    this.properties[i] = browserWindowProperties[i];
-  }
-
-  // TODO enforce incognito because we can't make a tab incognito once it has been added to a non-incognito window.
-  //browserWindowProperties.incognito = browserWindowProperties.private || false;
   
-  // Make any requested changes take effect in the user agent
-  chrome.windows.update(
-    this.properties.id, 
-    browserWindowProperties, 
-    function() {
-      this.dequeue();
+  var updateProperties = {};
+  
+  if(browserWindowProperties.focused !== undefined && browserWindowProperties.focused == true) {
+    this.properties.focused = updateProperties.focused = !!browserWindowProperties.focused;
+  }
+  
+  if(browserWindowProperties.top !== undefined && browserWindowProperties.top !== null) {
+    this.properties.top = updateProperties.top = parseInt(browserWindowProperties.top, 10);
+  }
+  
+  if(browserWindowProperties.left !== undefined && browserWindowProperties.left !== null) {
+    this.properties.left = updateProperties.left = parseInt(browserWindowProperties.left, 10);
+  }
+  
+  if(browserWindowProperties.height !== undefined && browserWindowProperties.height !== null) {
+    this.properties.height = updateProperties.height = parseInt(browserWindowProperties.height, 10);
+  }
+  
+  if(browserWindowProperties.width !== undefined && browserWindowProperties.width !== null) {
+      this.properties.width = updateProperties.width = parseInt(browserWindowProperties.width, 10);
     }
-  );
+
+  if( !isObjectEmpty(updateProperties) ) {
+
+    // Queue platform action or fire immediately if this object is resolved
+    Queue.enqueue(this, function(done) {
+      chrome.windows.update(
+        this.properties.id, 
+        updateProperties, 
+        function() {
+          done();
+        }.bind(this)
+      );
+    }.bind(this));
+  
+  }
 
 }
 
 BrowserWindow.prototype.close = function() {
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved || (this._parent && !this._parent.resolved)) {
-    this.enqueue('close');
+  
+  if( this.properties.closed == true) {
+    /*throw new OError(
+      "InvalidStateError",
+      "The current BrowserWindow object is already closed. Cannot call close on this object.",
+      DOMException.INVALID_STATE_ERR
+    );*/
     return;
   }
+  
+  // Set BrowserWindow object to closed state
+  this.properties.closed = true;
 
-  OEX.windows.close(this);
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    if(!this.properties.id) return;
+    chrome.windows.remove(
+      this.properties.id,
+      function() {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
 
 };
 
-BrowserTabsManager = function( parentObj ) {
+var BrowserTabManager = function( parentObj ) {
 
   OPromise.call( this );
 
   // Set up 0 mock BrowserTab objects at startup
   this.length = 0;
-
-  this._lastFocusedTab = null;
 
   this._parent = parentObj;
 
@@ -1588,28 +1877,53 @@ BrowserTabsManager = function( parentObj ) {
       delete this[ i ];
     }
     this.length = 0;
+    
+    if(browserTabs.length <= 0) {
+      return;
+    }
 
     for( var i = 0, l = browserTabs.length; i < l; i++ ) {
       if(this !== OEX.tabs) {
         browserTabs[ i ].properties.index = i;
       }
-      browserTabs[ i ].properties.closed = false;
       this[ i ] = browserTabs[ i ];
     }
     this.length = browserTabs.length;
+    
+    // Set focused on first tab object, unless some other tab object has focused=='true'
+    var focusFound = false;
+    for(var i = 0, l = browserTabs.length; i < l; i++) {
+      if(browserTabs[i].properties.active == true) {
+        focusFound = true;
+        break;
+      }
+    }
+    if(!focusFound) {
+      browserTabs[0].focus();
+    }
+
   };
 
   // Add an array of browserTabs to the current collection
-  this.addTabs = function( browserTabs, startPosition ) {
+  this.addTab = function( browserTab, startPosition ) {
     // Extract current set of tabs in collection
     var allTabs = [];
+        
     for(var i = 0, l = this.length; i < l; i++) {
       allTabs[ i ] = this[ i ];
+      if(allTabs[ i ].properties.active == true) {
+        focusFound = true;
+      }
     }
-
-    // Add new browserTabs to allTabs array
-    var spliceArgs = [startPosition || allTabs.length - 1, 0].concat( browserTabs );
-    Array.prototype.splice.apply(allTabs, spliceArgs);
+    
+    if(browserTab.properties.active == true) {
+      browserTab.focus();
+    }
+    
+    var position = startPosition !== undefined ? startPosition : allTabs.length;
+    
+    // Add new browserTab to allTabs array
+    allTabs.splice(this !== OEX.tabs ? position : this.length, 0, browserTab);
 
     // Rewrite the current tabs collection in order
     for( var i = 0, l = allTabs.length; i < l; i++ ) {
@@ -1617,7 +1931,6 @@ BrowserTabsManager = function( parentObj ) {
         // Update all tab indexes to the current tabs collection order
         allTabs[ i ].properties.index = i;
       }
-      allTabs[ i ].properties.closed = false;
       this[ i ] = allTabs[ i ];
     }
     this.length = allTabs.length;
@@ -1643,11 +1956,6 @@ BrowserTabsManager = function( parentObj ) {
     if(removeTabIndex > -1) {
       allTabs.splice(removeTabIndex, 1);
     }
-    
-    // Indicate that this tab is now closed
-    browserTab.properties.closed = true;
-    // Detach _windowParent from removed tab
-    browserTab._windowParent = null;
 
     // Rewrite the current tabs collection
     for( var i = 0, l = allTabs.length; i < l; i++ ) {
@@ -1669,122 +1977,140 @@ BrowserTabsManager = function( parentObj ) {
 
 };
 
-BrowserTabsManager.prototype = Object.create( OPromise.prototype );
+BrowserTabManager.prototype = Object.create( OPromise.prototype );
 
-BrowserTabsManager.prototype.create = function( browserTabProperties, before, obj ) {
+BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
 
-  browserTabProperties = browserTabProperties || {};
-
-  var shadowBrowserTab = obj || new BrowserTab();
-
-  // If current object is not resolved, then enqueue this action
-  if( !this.resolved || (this._parent && !this._parent.resolved) ) {
-    this.enqueue( 'create', browserTabProperties, before, shadowBrowserTab );
-    return shadowBrowserTab;
+  if(before && !(before instanceof BrowserTab)) {
+    throw new OError(
+      "TypeMismatchError",
+      "Could not create BrowserTab object. 'before' attribute provided is invalid.",
+      DOMException.TYPE_MISMATCH_ERR
+    );
   }
-
-  // Parameter mappings
-  browserTabProperties.pinned = browserTabProperties.locked || false;
-  browserTabProperties.active = browserTabProperties.focused || false;
-
-  // Not allowed in Chromium API
-  delete browserTabProperties.focused;
-
-  // TODO handle private tab insertion differently in Chromium
-  //browserTabProperties.incognito = browserTabProperties.private || false;
-
+  
   // Set parent window to create the tab in
 
   if(this._parent && this._parent.closed === true ) {
-    throw {
-        name:        "Invalid State Error",
-        message:     "Parent window is in the closed state and therefore is invalid"
-    };
-    return;
+    throw new OError(
+      "InvalidStateError",
+      "Parent window of the current BrowserTab object is in the closed state and therefore is invalid.",
+      DOMException.INVALID_STATE_ERR
+    );
   }
-  // no windowId will default to adding the tab to the current window
-  browserTabProperties.windowId = this._parent ? this._parent.properties.id : undefined;
-
+  
+  var shadowBrowserTab = new BrowserTab( browserTabProperties, this._parent || OEX.windows.getLastFocused() );
+  
+  // Sanitized tab properties
+  var createTabProperties = {
+    'url': shadowBrowserTab.properties.url,
+    'active': shadowBrowserTab.properties.active,
+    'pinned': shadowBrowserTab.properties.pinned
+  };
+  
+  // By default, tab will be created at end of current collection
+  shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
+  
   // Set insert position for the new tab from 'before' attribute, if any
-  if( before && before instanceof BrowserTab ) {
+  if( before && (before instanceof BrowserTab) ) {
 
     if( before.closed === true ) {
-      throw {
-          name:        "Invalid State Error",
-          message:     "'before' attribute is in the closed state and therefore is invalid"
-      };
-      return;
+      throw new OError(
+        "InvalidStateError",
+        "'before' BrowserTab object is in the closed state and therefore is invalid.",
+        DOMException.INVALID_STATE_ERR
+      );
     }
 
     if(before._windowParent && before._windowParent.closed === true ) {
-      throw {
-          name:        "Invalid State Error",
-          message:     "Parent window of 'before' attribute is in the closed state and therefore is invalid"
-      };
-      return;
+      throw new OError(
+        "InvalidStateError",
+        "Parent window of 'before' BrowserTab object is in the closed state and therefore is invalid.",
+        DOMException.INVALID_STATE_ERR
+      );
     }
-    browserTabProperties.windowId = before._windowParent ?
-                                      before._windowParent.properties.id : browserTabProperties.windowId;
-    browserTabProperties.index = before.position;
+    createTabProperties.windowId = before._windowParent ?
+                                      before._windowParent.properties.id : createTabProperties.windowId;
+    createTabProperties.index = before.position;
 
   }
-
-  chrome.tabs.create(
-    browserTabProperties,
-    function( _tab ) {
-
-      // Update BrowserTab properties
-      for(var i in _tab) {
-        shadowBrowserTab.properties[i] = _tab[i];
+  
+  // Set up tab index on start
+  if(this === OEX.tabs) {
+    shadowBrowserTab._windowParent = OEX.windows.getLastFocused();
+    shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
+  }
+  
+  // Add this object to the end of the current tabs collection
+  shadowBrowserTab._windowParent.tabs.addTab(shadowBrowserTab, shadowBrowserTab.properties.index);
+  
+  // unfocus all other tabs in tab's window parent collection if this tab is set to focused
+  if(shadowBrowserTab.properties.active == true ) {
+    for(var i = 0, l = shadowBrowserTab._windowParent.tabs.length; i < l; i++) {
+      if(shadowBrowserTab._windowParent.tabs[i] !== shadowBrowserTab) {
+        shadowBrowserTab._windowParent.tabs[i].properties.active = false;
       }
+    }
+  }
 
-      // Set up the shadowBrowserTab's parent BrowserWindow relationship
-      var noParentWindow = true;
+  // Add this object to the root tab manager
+  OEX.tabs.addTab( shadowBrowserTab );
 
-      if(_tab.windowId) {
-        var _windows = opera.extension.windows;
-        for(var i = 0, l = _windows.length; i < l; i++ ) {
-          if( _windows[ i ].properties.id === _tab.windowId ) {
-            noParentWindow = false;
-            shadowBrowserTab._windowParent = _windows[ i ];
-            break;
-          }
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    
+    chrome.tabs.create(
+      createTabProperties, 
+      function( _tab ) {
+        // Update BrowserTab properties
+        for(var i in _tab) {
+          if(i == 'url') continue;
+          shadowBrowserTab.properties[i] = _tab[i];
         }
-      }
+  
+        // Move this object to the correct position within the current tabs collection
+        // (but don't worry about doing this for the global tabs manager)
+        // TODO check if this is the correct behavior here
+        if(this !== OEX.tabs) {
+          this.removeTab( shadowBrowserTab );
+          this.addTab( shadowBrowserTab, shadowBrowserTab.properties.index);
+        }
 
-      // Add to the default window if there is no other parent to use
-      if( noParentWindow ) {
-        shadowBrowserTab._windowParent = OEX.windows.getLastFocused();
-      }
+        // Resolve new tab, if it hasn't been resolved already
+        shadowBrowserTab.resolve(true);
+        
+        done();
 
-      // Add this object to the current tabs collection
-      this.addTabs([ shadowBrowserTab ], shadowBrowserTab.properties.index);
+      }.bind(this)
+    );
+  
+  }.bind(this), true);
+  
+  // return shadowBrowserTab from this function before firing these events!
+  global.setTimeout(function() {
+    
+    shadowBrowserTab._windowParent.tabs.dispatchEvent(new OEvent('create', {
+      "tab": shadowBrowserTab,
+      "prevWindow": null,
+      "prevTabGroup": null,
+      "prevPosition": 0
+    }));
 
-      // Add this object to the root tab manager (if this is not the root tab manager)
-      if(this !== OEX.tabs) {
-        OEX.tabs.addTabs([ shadowBrowserTab ]);
-      }
-
-      // Resolve new tab, if it hasn't been resolved already
-      shadowBrowserTab.resolve( _tab );
-
-      // Dispatch oncreate event to all attached event listeners
-      this.fireEvent( new OEvent('create', {
-          "tab": shadowBrowserTab,
-          "prevWindow": shadowBrowserTab._windowParent,
-          "prevTabGroup": null,
-          "prevPosition": -1
-      }) );
-
-      this.dequeue();
-
-  }.bind(this));
-
+    // Fire a create event at RootTabsManager
+    OEX.tabs.dispatchEvent(new OEvent('create', {
+      "tab": shadowBrowserTab,
+      "prevWindow": null,
+      "prevTabGroup": null,
+      "prevPosition": 0
+    }));
+    
+  }, 50);
+  
   return shadowBrowserTab;
 
 };
 
-BrowserTabsManager.prototype.getAll = function() {
+BrowserTabManager.prototype.getAll = function() {
 
   var allTabs = [];
 
@@ -1796,153 +2122,349 @@ BrowserTabsManager.prototype.getAll = function() {
 
 };
 
-BrowserTabsManager.prototype.getSelected = function() {
+BrowserTabManager.prototype.getSelected = function() {
 
-  return this._lastFocusedTab || this[ 0 ];
+  for(var i = 0, l = this.length; i < l; i++) {
+    if(this[i].focused == true) {
+      return this[i];
+    }
+  }
+  
+  // default
+  if(this[0]) {
+    this[0].properties.active = true;
+  }
+  
+  return this[0] || undefined;
 
 };
 // Alias of .getSelected()
-BrowserTabsManager.prototype.getFocused = BrowserTabsManager.prototype.getSelected;
+BrowserTabManager.prototype.getFocused = BrowserTabManager.prototype.getSelected;
 
-BrowserTabsManager.prototype.close = function( browserTab ) {
+BrowserTabManager.prototype.close = function( browserTab ) {
 
-  if( !browserTab ) {
-    return;
+  if( !browserTab || !(browserTab instanceof BrowserTab)) {
+    throw new OError(
+      "TypeMismatchError",
+      "Expected browserTab argument to be of type BrowserTab.",
+      DOMException.TYPE_MISMATCH_ERR
+    );
   }
-
-  // If current object is not resolved, then enqueue this action
-  if( !this.resolved || (this._parent && !this._parent.resolved) || !browserTab.resolved ) {
-    this.enqueue( 'close', browserTab );
-    return;
-  }
-
-  chrome.tabs.remove(browserTab.properties.id, function() {
-    browserTab.dequeue();
-
-    this.dequeue();
-  }.bind(this));
+  
+  browserTab.close();
 
 };
 
-RootBrowserTabsManager = function() {
+var RootBrowserTabManager = function() {
 
-  BrowserTabsManager.call(this);
-
+  BrowserTabManager.call(this);
+  
+  // list of tab objects we should ignore
+  this._blackList = {};
+  
+  // global permanaent tabs collection manager
+  this._allTabs = [];
+  
   // Event Listener implementations
   chrome.tabs.onCreated.addListener(function(_tab) {
+    
+    var tabFoundIndex = -1;
 
-    window.setTimeout(function() {
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
 
-      // If this tab is already registered in the root tab collection then ignore
-      var tabFound = false;
-      for (var i = 0, l = this.length; i < l; i++) {
-        if (this[i].properties.id == _tab.id) {
-          tabFound = true;
+      // opera.extension.windows.create rewrite hack
+      if (this._allTabs[i].rewriteUrl && this._allTabs[i].properties.url == _tab.url) {
+
+        if(this._allTabs[i]._windowParent) {
+          
+          // If the window ids don't match then silently move the tab to the correct parent
+          // e.g. this happens if we create a new tab from the background page's console.
+          if(this._allTabs[i]._windowParent.properties.id !== _tab.windowId) {
+            for(var j = 0, k = OEX.windows.length; j < k; j++) {
+              if(OEX.windows[j].properties.id == _tab.windowId) {
+                this._allTabs[i]._windowParent.tabs.removeTab(this._allTabs[i]);
+                this._allTabs[i]._windowParent = OEX.windows[j];
+                //this._allTabs[i].properties.index = this._allTabs[i]._windowParent.tabs.length;
+                this._allTabs[i].properties.windowId = _tab.windowId;
+
+                // Force change tab's index position in platform
+                Queue.enqueue(this._allTabs[i], function(done) {
+                  chrome.tabs.move(
+                    this.properties.id,
+                    { index: this._windowParent.tabs.length },
+                    function(_tab) {
+                      done();
+                    }.bind(this)
+                  );
+                }.bind(this._allTabs[i]));
+              
+                OEX.windows[j].tabs.addTab( this._allTabs[i], this._allTabs[i].properties.index);
+              }
+            }
+          }
+          
+          // Resolve the parent window object, if it's not already resolved
+          this._allTabs[i]._windowParent.properties.id = _tab.windowId;
+          this._allTabs[i]._windowParent.resolve(true);
+          // Also resolve window object's root tab manager
+          this._allTabs[i]._windowParent.tabs.resolve(true);
+        
+        } else {
+          
+          throw new OError('NoParent', 'BrowserTab object must have a parent window.');
+          
+        }
+        
+        // Rewrite tab properties (importantly, the id gets added here)
+        /*for(var j in _tab) {
+          if(j == 'url') continue;
+          this._allTabs[i].properties[j] = _tab[j];
+        }*/
+        // update oncreate tab properties
+        this._allTabs[i].properties.id = _tab.id;
+        this._allTabs[i].properties.index = _tab.index;
+        
+        /*this._allTabs[i].properties.status = _tab.readyState;
+        this._allTabs[i].properties.title = _tab.title;
+        this._allTabs[i].properties.favIconUrl = _tab.favIconUrl;
+        this._allTabs[i].properties.incognito = _tab.incognito;
+        this._allTabs[i].properties.pinned = _tab.pinned;*/
+        // 'index' should be handled in shim
+        
+        // now rewrite tab to the correct url 
+        // (which will be automatically trigger navigation to the rewrite url)
+        
+        // Resolve the tab object
+        this._allTabs[i].resolve(true);
+        
+        this._allTabs[i].properties.url = this._allTabs[i].rewriteUrl;
+      
+        delete this._allTabs[i].rewriteUrl;
+        
+        chrome.tabs.update(
+          this._allTabs[i].properties.id, 
+          { 'url': this._allTabs[i].properties.url }, 
+          function(_tab) {}
+        );
+          
+        //this._allTabs[i].rewriteDone = true;
+        
+        // remove windowparent rewrite url
+        if(this._allTabs[i]._windowParent.rewriteUrl !== undefined) {
+          delete this._allTabs[i]._windowParent.rewriteUrl;
+        }
+
+        return;
+      }
+      
+      // Standard tab search
+      if (this._allTabs[i].properties.id == _tab.id) {
+        tabFoundIndex = i;
+        break;
+      }
+    }
+    
+    var newTab;
+    
+    if (tabFoundIndex < 0) {
+      
+      var parentWindow;
+
+      // find tab's parent window object via the window.rewriteURL property
+      var _windows = OEX.windows;
+      for (var i = 0, l = _windows.length; i < l; i++) {
+        
+        // Bind the window object with its window id and resolve
+        if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == _tab.url ) {
+          _windows[i].properties.id = _tab.windowId;
+          _windows[i].resolve(true);
+          // Also resolve window object's root tab manager
+          _windows[i].tabs.resolve(true);
+        }
+        
+        if (_windows[i].properties.id !== undefined && _windows[i].properties.id == _tab.windowId) {
+          parentWindow = _windows[i];
           break;
         }
       }
-
-      if (!tabFound) {
-        // Create and register a new BrowserTab object
-        var newTab = new BrowserTab(_tab);
-
-        var noParentFound = true;
-
-        // Attach the tab to its parent window object
-        var _windows = opera.extension.windows;
-        for (var i = 0, l = _windows.length; i < l; i++) {
-          if (_windows[i].properties.id == _tab.windowId) {
-
-            noParentFound = false;
-
-            newTab._windowParent = _windows[i];
-
-            break;
+      
+      if (!parentWindow) {
+        
+        // Create new BrowserWindow object
+        parentWindow = new BrowserWindow();
+        
+        // write properties not available in BrowserWindow constructor
+        parentWindow.properties.id = _tab.windowId;
+        
+        // Attach to windows collection
+        OEX.windows.addWindow(_tab.windowId, parentWindow);
+        
+        parentWindow.resolve(true);
+        parentWindow.tabs.resolve(true);
+        
+        // we really need to learn more about the newly create BrowserWindow object
+        chrome.windows.get(parentWindow.properties.id, { 'populate': false }, function(_window) {
+          
+          // update window properties
+          for(var prop in _window) {
+            if(prop == 'tabs') continue;
+            parentWindow.properties[prop] = _window[prop];
           }
+          
+        }.bind(this));
+        
+      }
+      
+      // Replace first tab object with newTab
+      if(parentWindow.rewriteUrl && parentWindow.tabs.length > 0) {
+        
+        newTab = parentWindow.tabs[0];
+        
+        // rewrite the tab's properties
+        for(var j in _tab) {
+          newTab.properties[j] = _tab[j];
         }
+        
+      } else {
 
-        if (noParentFound) {
-          newTab._windowParent = OEX.windows.getLastFocused();
+        // Create the new BrowserTab object using the provided properties
+        newTab = new BrowserTab(_tab, parentWindow);
+        
+        // write properties not available in BrowserTab constructor
+        newTab.properties.id = _tab.id;
+        newTab.properties.url = _tab.url;
+        newTab.properties.title = _tab.title;
+        newTab.properties.favIconUrl = _tab.favIconUrl;
+
+        newTab.properties.pinned = _tab.pinned;
+        newTab.properties.incognito = _tab.incognito;
+
+        newTab.properties.status = _tab.status;
+
+        newTab.properties.index = _tab.index;
+
+        if(_tab.active == true) {
+          newTab.focus();
         }
-
-        newTab._windowParent.tabs.addTabs([newTab], newTab.properties.index);
-
-        newTab._windowParent.tabs.fireEvent(new OEvent('create', {
-          "tab": newTab,
-          "prevWindow": newTab._windowParent,
-          "prevTabGroup": null,
-          "prevPosition": NaN
-        }));
+        
+        // Register the new BrowserTab object with a BrowserWindow's tabs collection
+        newTab._windowParent.tabs.addTab( newTab, newTab.properties.index );
 
         // Add object to root store
-        this.addTabs([newTab]);
-
-        // Resolve new tab, if it hasn't been resolved already
-        newTab.resolve();
-
-        // Fire a create event at RootTabsManager
-        this.fireEvent(new OEvent('create', {
-          "tab": newTab,
-          "prevWindow": newTab._windowParent,
-          "prevTabGroup": null,
-          "prevPosition": NaN
-        }));
-
+        this.addTab( newTab );
+        
       }
+      
+      // Fire create events for a newly created BrowserTab object
+      newTab._windowParent.tabs.dispatchEvent(new OEvent('create', {
+        "tab": newTab,
+        "prevWindow": null,
+        "prevTabGroup": null,
+        "prevPosition": 0
+      }));
 
-    }.bind(this), 200);
+      // Fire a create event at RootTabsManager
+      OEX.tabs.dispatchEvent(new OEvent('create', {
+        "tab": newTab,
+        "prevWindow": null,
+        "prevTabGroup": null,
+        "prevPosition": 0
+      }));
 
+    } else {
+      
+      newTab = this[tabFoundIndex];
+
+      // Update existing tab properties
+      for(var i in _tab) {
+        if(i == 'url') continue;
+        newTab.properties[i] = _tab[i];
+      }
+      // update individual properties
+      //newTab.properties.id = _tab.id;
+      
+    }
+    
+    // remove window rewriteUrl since the bootstrap has now been used
+    if(newTab._windowParent.rewriteUrl !== undefined) {
+      delete newTab._windowParent.rewriteUrl;
+    }
+    
+    // now rewrite to the correct url 
+    // (which will be automatically trigger navigation to the rewrite url)
+    if(newTab.rewriteUrl !== undefined) {
+      newTab.url = newTab.rewriteUrl;
+      delete newTab.rewriteUrl;
+    }
+    
+    // Resolve new tab, if it hasn't been resolved already
+    newTab.resolve(true);
+    
+    Queue.dequeue();
+    
   }.bind(this));
 
   chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
-
+    
+    if( this._blackList[ tabId ] ) {
+      return;
+    }
+    
     // Remove tab from current collection
     var deleteIndex = -1;
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i].properties.id == tabId) {
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
+      if (this._allTabs[i].properties.id == tabId) {
         deleteIndex = i;
         break;
       }
     }
 
-    if (deleteIndex > -1) {
+    if (deleteIndex < 0) {
+      return;
+    }
+    
+    var oldTab = this._allTabs[deleteIndex];
+    
+    var oldTabWindowParent = oldTab._oldWindowParent;
+    var oldTabPosition = oldTab._oldIndex || oldTab.properties.index;
 
-      var oldTab = this[deleteIndex];
+    // Detach from current parent BrowserWindow (if close happened outside of our framework)
+    if (!oldTabWindowParent && oldTab._windowParent !== undefined && oldTab._windowParent !== null) {
+      oldTab.properties.closed = true;
       
-      var oldTabWindowParent = oldTab ? oldTab._windowParent : null;
-      var oldTabPosition = oldTab ? oldTab.position : NaN;
-
-      // Detach from parent BrowserWindow
-      if (oldTabWindowParent) {
-        
-        oldTabWindowParent.tabs.removeTab( oldTab );
-
-      }
+      oldTab._windowParent.tabs.removeTab( oldTab );
       
       // Remove tab from root tab manager
       this.removeTab( oldTab );
-
-      // Fire a new 'close' event on the closed BrowserTab object
-      oldTab.fireEvent(new OEvent('close', {
-        "tab": oldTab,
-        "prevWindow": oldTabWindowParent,
-        "prevTabGroup": null,
-        "prevPosition": oldTabPosition
-      }));
       
-      // Fire a new 'close' event on the closed BrowserTab's previous 
-      // BrowserWindow parent object
-      if(oldTabWindowParent) {
-        oldTabWindowParent.tabs.fireEvent(new OEvent('close', {
-          "tab": oldTab,
-          "prevWindow": oldTabWindowParent,
-          "prevTabGroup": null,
-          "prevPosition": oldTabPosition
-        }));
+      // Focus new tab within the removed tab's window
+      for(var i = 0, l = oldTab._windowParent.tabs.length; i < l; i++) {
+        if(oldTab._windowParent.tabs[i].properties.active == true) {
+          oldTab._windowParent.tabs[i].focus();
+        } else {
+          oldTab._windowParent.tabs[i].properties.active = false;
+        }
       }
+      
+      oldTab.properties.index = NaN;
+      
+      oldTabWindowParent = oldTab._windowParent;
+      oldTab._windowParent = null;
+    }
 
-      // Fire a new 'close' event on this root tab manager object
-      this.fireEvent(new OEvent('close', {
+    // Fire a new 'close' event on the closed BrowserTab object
+    oldTab.dispatchEvent(new OEvent('close', {
+      "tab": oldTab,
+      "prevWindow": oldTabWindowParent,
+      "prevTabGroup": null,
+      "prevPosition": oldTabPosition
+    }));
+    
+    // Fire a new 'close' event on the closed BrowserTab's previous 
+    // BrowserWindow parent object
+    if(oldTabWindowParent) {
+
+      oldTabWindowParent.tabs.dispatchEvent(new OEvent('close', {
         "tab": oldTab,
         "prevWindow": oldTabWindowParent,
         "prevTabGroup": null,
@@ -1951,13 +2473,23 @@ RootBrowserTabsManager = function() {
 
     }
 
+    // Fire a new 'close' event on this root tab manager object
+    this.dispatchEvent(new OEvent('close', {
+      "tab": oldTab,
+      "prevWindow": oldTabWindowParent,
+      "prevTabGroup": null,
+      "prevPosition": oldTabPosition
+    }));
+    
+    Queue.dequeue();
+
   }.bind(this));
 
-  chrome.tabs.onUpdated.addListener(function(tabId, changeInfo) {
-
+  chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    
     var updateIndex = -1;
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i].properties.id == tabId) {
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
+      if (this._allTabs[i].properties.id == tabId) {
         updateIndex = i;
         break;
       }
@@ -1966,42 +2498,56 @@ RootBrowserTabsManager = function() {
     if (updateIndex < 0) {
       return; // nothing to update
     }
-
-    var updateTab = this[updateIndex];
-
-    // Update tab properties in current collection
-    for (var i in changeInfo) {
-      updateTab.properties[i] = changeInfo[i];
+    
+    var updateTab = this._allTabs[updateIndex];
+    
+    // Update individual tab properties
+    
+    updateTab.properties.url = tab.url;
+    updateTab.properties.title = tab.title;
+    updateTab.properties.favIconUrl = tab.favIconUrl;
+      
+    updateTab.properties.status = tab.status;
+    
+    updateTab.properties.pinned = tab.pinned;
+    updateTab.properties.incognito = tab.incognito;
+    
+    updateTab.properties.index = tab.index;
+    
+    if(tab.active == true && updateTab.properties.active == false) {
+      updateTab.focus();
     }
-
-    // Update tab properties in _windowParent object
-    if (updateTab._windowParent) {
-      var parentUpdateIndex = -1;
-      for (var i = 0, l = updateTab._windowParent.tabs.length; i < l; i++) {
-        if (updateTab._windowParent.tabs[i].properties.id == tabId) {
-          parentUpdateIndex = i;
-          break;
-        }
-      }
-
-      if (parentUpdateIndex > -1) {
-
-        for (var i in changeInfo) {
-          updateTab._windowParent.tabs[parentUpdateIndex].properties[i] = changeInfo[i];
-        }
-
-      }
-
-    }
+    
+    Queue.dequeue();
 
   }.bind(this));
-
-  chrome.tabs.onMoved.addListener(function(tabId, moveInfo) {
-
+  
+  function moveHandler(tabId, moveInfo) {
+    
+    if( this._blackList[ tabId ] ) {
+      return;
+    }
+    
+    // find tab's parent window object via the window.rewriteURL property
+    // and rewrite it's id value
+    var _windows = OEX.windows;
+    for (var i = 0, l = _windows.length; i < l; i++) {
+      
+      // Bind the window object with its window id and resolve
+      if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == "chrome://newtab/#" + tabId ) {
+        _windows[i].properties.id = moveInfo.windowId;
+        _windows[i].resolve(true);
+        // Also resolve window object's root tab manager
+        _windows[i].tabs.resolve(true);
+        
+        delete _windows[i].rewriteUrl;
+      }
+    }
+    
     // Find tab object
     var moveIndex = -1;
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i].properties.id == tabId) {
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
+      if (this._allTabs[i].properties.id == tabId) {
         moveIndex = i;
         break;
       }
@@ -2011,97 +2557,192 @@ RootBrowserTabsManager = function() {
       return; // nothing to update
     }
 
-    var moveTab = this[moveIndex];
-    var moveTabWindowParent = moveTab ? moveTab._windowParent : null;
-
-    if(moveTab) {
-
-      // Detach from current _windowParent and attach to new BrowserWindow parent
-      if (moveTabWindowParent) {
-
-        var parentMoveIndex = -1;
-        for (var i = 0, l = moveTabWindowParent.tabs.length; i < l; i++) {
-          if (moveTabWindowParent.tabs[i].properties.id == tabId) {
-            parentMoveIndex = i;
-            break;
-          }
-        }
-
-        if (parentMoveIndex > -1) {
-
-          // Remove moveTab from _windowParent.tabs
-          for (var i = parentMoveIndex, l = moveTabWindowParent.tabs.length; i < l; i++) {
-            if (moveTabWindowParent.tabs[i + 1]) {
-              moveTabWindowParent.tabs[i] = moveTabWindowParent.tabs[i + 1];
-            }
-          }
-          delete moveTabWindowParent.tabs[moveTab._windowParent.length - 1];
-          moveTabWindowParent.tabs.length -= 1;
-
-        }
-
-      }
+    var moveTab = this._allTabs[moveIndex];
     
-      // Find new BrowserWindow parent and attach moveTab
+    if(moveTab) {
+      
+      // Remove and re-add to BrowserTabManager parent in the correct position
+      if(moveTab._oldWindowParent) {
+        moveTab._oldWindowParent.tabs.removeTab( moveTab );
+      } else {
+        moveTab._windowParent.tabs.removeTab( moveTab );
+      }
+      
+      // Update index
+      moveTab.properties.index = moveInfo.toIndex;
+
+      moveTab._windowParent.tabs.addTab( moveTab, moveInfo.toIndex );
+      
+      moveTab.dispatchEvent(new OEvent('move', {
+        "tab": moveTab,
+        "prevWindow": moveTab._oldWindowParent,
+        "prevTabGroup": null,
+        "prevPosition": moveTab._oldIndex
+      }));
+
+      this.dispatchEvent(new OEvent('move', {
+        "tab": moveTab,
+        "prevWindow": moveTab._oldWindowParent,
+        "prevTabGroup": null,
+        "prevPosition": moveTab._oldIndex
+      }));
+      
+      // Clean up temporary attributes
+      if(moveTab._oldWindowParent !== undefined) {
+        delete moveTab._oldWindowParent;
+      }
+      if(moveTab._oldIndex !== undefined) {
+        delete moveTab._oldIndex;
+      }
+
+    }
+    
+    Queue.dequeue();
+
+  }
+  
+  function attachHandler(tabId, attachInfo) {
+    
+    // Find tab object
+    var attachIndex = -1;
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
+      if (this._allTabs[i].properties.id == tabId) {
+        attachIndex = i;
+        break;
+      }
+    }
+
+    if (attachIndex < 0) {
+      return; // nothing to update
+    }
+
+    var attachedTab = this._allTabs[attachIndex];
+    
+    // Detach tab from existing BrowserWindow parent (if any)
+    if (attachedTab._oldWindowParent) {
+      attachedTab._oldWindowParent.tabs.removeTab( attachedTab );
+    }
+    
+    // Wait for new window to be created and attached!
+    //global.setTimeout(function() {
+    
+      // Attach tab to new BrowserWindow parent
       for (var i = 0, l = OEX.windows.length; i < l; i++) {
-        if (OEX.windows[i].properties.id == moveInfo.windowId) {
-          // Attach tab to new parent
-          OEX.windows[i].tabs.addTabs([moveTab], moveInfo.toIndex);
-          
-          // Reassign moveTab's _windowParent
-          moveTab._windowParent = OEX.windows[i];
+        if (OEX.windows[i].properties.id == attachInfo.newWindowId) {
+          // Reassign attachedTab's _windowParent
+          attachedTab._windowParent = OEX.windows[i];
+        
+          // Tab will be added in the moveHandler function
           
           break;
         }
       }
-
-      moveTab.fireEvent(new OEvent('move', {
-        "tab": moveTab,
-        "prevWindow": moveTabWindowParent,
-        "prevTabGroup": null,
-        "prevPosition": moveInfo.fromIndex
-      }));
-
-      this.fireEvent(new OEvent('move', {
-        "tab": moveTab,
-        "prevWindow": moveTabWindowParent,
-        "prevTabGroup": null,
-        "prevPosition": moveInfo.fromIndex
-      }));
     
-    }
-
-  }.bind(this));
-
-  chrome.tabs.onHighlighted.addListener(function(highlightInfo) {
-
-    // Set current tab property to active while setting everything else to inactive
-    for (var i = 0, l = OEX.windows.length; i < l; i++) {
-
-      for (var j = 0, k = OEX.windows[i].tabs.length; j < k; j++) {
-
-        for (var x = 0, z = highlightInfo.tabIds.length; x < z; x++) {
-
-          if (OEX.windows[i] == highlightInfo.windowId &&
-                OEX.windows[i].tabs[j].properties.id == highlightInfo.tabIds[x]) {
-
-            OEX.windows[i].tabs[j].properties.active = true;
-            
-            OEX.windows[i].tabs._lastFocusedTab = OEX.windows[i].tabs[j];
-            
-            this._lastFocusedTab = OEX.windows[i].tabs[j];
-
-          } else {
-
-            OEX.windows[i].tabs[j].properties.active = false;
-
-          }
-
-        }
-
+      var moveInfo = {
+        windowId: attachInfo.newWindowId,
+        //fromIndex: null,
+        toIndex: attachInfo.newPosition
+      };
+    
+      // Execute normal move handler
+      moveHandler.bind(this).call(this, tabId, moveInfo);
+    
+    //}.bind(this), 200);
+  }
+  
+  function detachHandler(tabId, detachInfo) {
+    
+    // Find tab object
+    var detachIndex = -1;
+    for (var i = 0, l = this._allTabs.length; i < l; i++) {
+      if (this._allTabs[i].properties.id == tabId) {
+        detachIndex = i;
+        break;
       }
-
     }
+
+    if (detachIndex < 0) {
+      return; // nothing to update
+    }
+
+    var detachedTab = this._allTabs[detachIndex];
+    
+    if(detachedTab) {
+      detachedTab._oldWindowParent = detachedTab._windowParent;
+      detachedTab._oldIndex = detachedTab.position;
+    }
+    
+    Queue.dequeue();
+    
+  }
+  
+  // Fired when a tab is moved within a window
+  chrome.tabs.onMoved.addListener(moveHandler.bind(this));
+  
+  // Fired when a tab is moved between windows
+  chrome.tabs.onAttached.addListener(attachHandler.bind(this));
+  
+  // Fired when a tab is removed from an existing window
+  chrome.tabs.onDetached.addListener(detachHandler.bind(this));
+
+  chrome.tabs.onActivated.addListener(function(activeInfo) {
+    
+    if( this._blackList[ activeInfo.tabId ] ) {
+      return;
+    }
+    
+    if(!activeInfo.tabId) return;
+    
+    var blurTarget, focusTarget;
+    
+    for(var i = 0, l = this._allTabs.length; i < l; i++) {
+      
+      if(this._allTabs[i].properties.id == activeInfo.tabId) {
+        
+        // Set BrowserTab object to active state
+        this._allTabs[i].properties.active = true;
+        
+        // Fire focus event on tab's manager
+        focusTarget = this._allTabs[i];
+
+        if(this._allTabs[i]._windowParent) {
+
+          // unset active state of all other tabs in this collection
+          for(var j = 0, k = this._allTabs[i]._windowParent.tabs.length; j < k; j++) {
+            if(this._allTabs[i]._windowParent.tabs[j] !== this._allTabs[i]) {
+              if(this._allTabs[i]._windowParent.tabs[j].properties.active == true) {
+                blurTarget = this._allTabs[i]._windowParent.tabs[j];
+              }
+              this._allTabs[i]._windowParent.tabs[j].properties.active = false;
+            }
+          }
+        }
+        
+      }
+      
+    }
+    
+    // Fire blur event
+    if(focusTarget) {
+      OEX.tabs.dispatchEvent( new OEvent('blur', {
+        "tab": focusTarget,
+        "prevWindow": focusTarget._windowParent, // same as current window
+        "prevTabGroup": null,
+        "prevPosition": focusTarget.properties.index
+      }) );
+    }
+    
+    // Fire focus event
+    if(blurTarget) {
+      OEX.tabs.dispatchEvent( new OEvent('focus', {
+        "tab": blurTarget,
+        "prevWindow": blurTarget._windowParent, // same as current window
+        "prevTabGroup": null,
+        "prevPosition": blurTarget.properties.index
+      }) );
+    }
+    
+    Queue.dequeue();
 
   }.bind(this));
   
@@ -2114,9 +2755,9 @@ RootBrowserTabsManager = function() {
     
     // Resolve tabId to BrowserTab object
     var sourceBrowserTab = null
-    for(var i = 0, l = this.length; i < l; i++) {
-      if( this[ i ].properties.id == msg.source.tabId ) {
-        sourceBrowserTab = this[ i ];
+    for(var i = 0, l = this._allTabs.length; i < l; i++) {
+      if( this._allTabs[ i ].properties.id == msg.source.tabId ) {
+        sourceBrowserTab = this._allTabs[ i ];
         break;
       }
     }
@@ -2157,18 +2798,65 @@ RootBrowserTabsManager = function() {
 
 };
 
-RootBrowserTabsManager.prototype = Object.create( BrowserTabsManager.prototype );
+RootBrowserTabManager.prototype = Object.create( BrowserTabManager.prototype );
 
-BrowserTab = function(browserTabProperties, windowParent) {
+// Make sure .__proto__ object gets setup correctly
+for(var i in BrowserTabManager.prototype) {
+  if(BrowserTabManager.prototype.hasOwnProperty(i)) {
+    RootBrowserTabManager.prototype[i] = BrowserTabManager.prototype[i];
+  }
+}
+
+
+var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) {
+
+  if(!windowParent) {
+    throw new OError('Parent missing', 'BrowserTab objects can only be created with a window parent provided');
+  }
 
   OPromise.call(this);
-
-  this.properties = browserTabProperties || {};
-
+  
   this._windowParent = windowParent;
+
+  browserTabProperties = browserTabProperties || {};
+  
+  this.properties = {
+    'id': undefined, // not settable on create
+    'closed': false, // not settable on create
+    // locked: 
+    'pinned': browserTabProperties.locked ? !!browserTabProperties.locked : false,
+    // private:
+    'incognito': false, // TODO handle private tab creation in Chromium model
+    // selected: 
+    'active': browserTabProperties.focused ? !!browserTabProperties.focused : false,
+    // readyState:
+    'status': 'loading', // not settable on create
+    // faviconUrl:
+    'favIconUrl': '', // not settable on create
+    'title': '', // not settable on create
+    'url': browserTabProperties.url ? (browserTabProperties.url + "") : 'chrome://newtab',
+    // position:
+    'index': browserTabProperties.position ? parseInt(browserTabProperties.position, 10) : 0
+    // 'browserWindow' not part of settable properties
+    // 'tabGroup' not part of settable properties
+  }
 
   // Create a unique browserTab id
   this._operaId = Math.floor(Math.random() * 1e16);
+  
+  // Pass the identity of this tab through the Chromium Tabs API via the URL field
+  if(!bypassRewriteUrl) {
+    this.rewriteUrl = this.properties.url;
+    this.properties.url = "chrome://newtab/#" + this._operaId;
+  }
+  
+  // Set tab focused if active
+  if(this.properties.active == true) {
+    this.focus();
+  }
+  
+  // Add this object to the permanent management collection
+  OEX.tabs._allTabs.push( this );
 
 };
 
@@ -2177,51 +2865,87 @@ BrowserTab.prototype = Object.create(OPromise.prototype);
 // API
 BrowserTab.prototype.__defineGetter__("id", function() {
   return this._operaId;
-});
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("closed", function() {
-  return this.properties.closed || false;
-});
+  return this.properties.closed !== undefined ? !!this.properties.closed : false;
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("locked", function() {
-  return this.properties.pinned || false;
-});
+  return this.properties.pinned !== undefined ? !!this.properties.pinned : false;
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("focused", function() {
-  return this.properties.active || false;
-});
+  return this.properties.active !== undefined ? !!this.properties.active : false;
+}); // read
+
+BrowserTab.prototype.__defineSetter__("focused", function(val) {
+  this.properties.active = !!val;
+  
+  if(this.properties.active == true) {
+    this.focus();
+  }
+}); // write
 
 BrowserTab.prototype.__defineGetter__("selected", function() {
-  return this.properties.active || false;
-});
+  return this.properties.active !== undefined ? !!this.properties.active : false;
+}); // read
+
+BrowserTab.prototype.__defineSetter__("selected", function(val) {
+  this.properties.active = !!val;
+  
+  if(this.properties.active == true) {
+    this.focus();
+  }
+}); // write
 
 BrowserTab.prototype.__defineGetter__("private", function() {
-  return this.properties.incognito || false;
-});
+  return this.properties.incognito !== undefined ? !!this.properties.incognito : false;
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("faviconUrl", function() {
   if (this.properties.closed) {
     return "";
   }
   return this.properties.favIconUrl || "";
-});
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("title", function() {
   if (this.properties.closed) {
     return "";
   }
   return this.properties.title || "";
-});
+}); // read-only
 
 BrowserTab.prototype.__defineGetter__("url", function() {
   if (this.properties.closed) {
     return "";
   }
+  
+  // URL rewrite hack
+  if (this.rewriteUrl) {
+    return this.rewriteUrl;
+  }
+  
   return this.properties.url || "";
+}); // read-only
+
+BrowserTab.prototype.__defineSetter__("url", function(val) {
+  this.properties.url = val + "";
+  
+  Queue.enqueue(this, function(done) {
+    chrome.tabs.update(
+      this.properties.id, 
+      { 'url': this.properties.url }, 
+      function(_tab) {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
 });
 
 BrowserTab.prototype.__defineGetter__("readyState", function() {
-  return this.properties.status || "loading";
+  return this.properties.status !== undefined ? this.properties.status : "loading";
 });
 
 BrowserTab.prototype.__defineGetter__("browserWindow", function() {
@@ -2234,93 +2958,168 @@ BrowserTab.prototype.__defineGetter__("tabGroup", function() {
 });
 
 BrowserTab.prototype.__defineGetter__("position", function() {
-  return this.properties.index || NaN;
+  return this.properties.index !== undefined ? this.properties.index : NaN;
 });
 
 // Methods
-BrowserTab.prototype.close = function() {
-
-  OEX.tabs.close(this);
-
-};
 
 BrowserTab.prototype.focus = function() {
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved) {
-    this.enqueue('focus');
-    return;
+  
+  if(this.properties.active == true || this.properties.closed == true) {
+    return; // already focused or invalid because tab is closed
+  }
+  
+  // Set BrowserTab object to active state
+  this.properties.active = true;
+  
+  if(this._windowParent) {
+    // unset active state of all other tabs in this collection
+    for(var i = 0, l = this._windowParent.tabs.length; i < l; i++) {
+      if(this._windowParent.tabs[i] !== this) {
+        this._windowParent.tabs[i].properties.active = false;
+      }
+    }
   }
 
-  chrome.tabs.update(this.properties.id, {
-    active: true
-  }, function() {
-    this.dequeue();
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    chrome.tabs.update(
+      this.properties.id, 
+      { active: true }, 
+      function() {
+        done();
+      }.bind(this)
+    );
   }.bind(this));
 
 };
 
 BrowserTab.prototype.update = function(browserTabProperties) {
-
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved) {
-    this.enqueue('update', browserTabProperties);
-    return;
+  
+  if( this.properties.closed == true ) {
+    throw new OError(
+      "InvalidStateError",
+      "The current BrowserTab object is closed. Cannot call 'update' on this object.",
+      DOMException.INVALID_STATE_ERR
+    );
   }
-
-  for (var i in browserTabProperties) {
-    this.properties[i] = browserTabProperties[i];
+  
+  if( isObjectEmpty(browserTabProperties || {}) ) {
+    throw new OError(
+      'TypeMismatchError',
+      'You must provide some valid properties to update a BrowserTab object',
+      DOMException.TYPE_MISMATCH_ERR
+    );
   }
-
-  // Parameter mappings
-  browserTabProperties.active = browserTabProperties.focused || false;
-  browserTabProperties.pinned = browserTabProperties.locked || false;
-
-  // Not allowed in Chromium API
-  delete browserTabProperties.focused;
-
-  // TODO handle private tab insertion differently in Chromium
-  //browserTabProperties.incognito = browserTabProperties.private || false;
-
-  // Make any requested changes take effect in the user agent
-  chrome.tabs.update(this.properties.id, browserTabProperties, function() {
+  
+  var updateProperties = {};
+  
+  // Cannot set focused = false in update
+  if(browserTabProperties.focused !== undefined && browserTabProperties.focused == true) {
+    this.properties.active = updateProperties.active = !!browserTabProperties.focused;
     
-    this.dequeue();
-
-  }.bind(this));
+    // unset active parameter of all other objects
+    if(this._windowParent) {
+      for(var i = 0, l = this._windowParent.tabs.length; i < l; i++) {
+        if(this._windowParent.tabs[i] != this) {
+          this._windowParent.tabs[i].properties.active = false;
+        }
+      }
+    }
+  }
+  
+  if(browserTabProperties.locked !== undefined && browserTabProperties.locked !== null) {
+    this.properties.pinned = updateProperties.pinned = !!browserTabProperties.locked;
+  }
+  
+  if(browserTabProperties.url !== undefined && browserTabProperties.url !== null) {
+    if(this.rewriteUrl) {
+      this.rewriteUrl = updateProperties.url = browserTabProperties.url;
+    } else {
+      this.properties.url = updateProperties.url = browserTabProperties.url;
+    }
+  }
+  
+  if( !isObjectEmpty(updateProperties) ) {
+    
+    // Queue platform action or fire immediately if this object is resolved
+    Queue.enqueue(this, function(done) {
+      chrome.tabs.update(
+        this.properties.id, 
+        updateProperties, 
+        function(_tab) {
+          done();
+        }.bind(this)
+      );
+    }.bind(this));
+  
+  }
 
 };
 
 BrowserTab.prototype.refresh = function() {
-  // not implemented
+  
+  // Cannot refresh if the tab is in the closed state
+  if(this.properties.closed === true) {
+    return;
+  }
+  
+  // reload by resetting the URL
+
+  //this.properties.status = "loading";
+  //this.properties.title = undefined;
+  
+  Queue.enqueue(this, function(done) {
+    // reset the readyState + title
+    this.properties.status = "loading";
+    this.properties.title = undefined;
+    
+    chrome.tabs.reload( 
+      this.properties.id, 
+      { bypassCache: true }, 
+      function() {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
+  
 };
 
 // Web Messaging support for BrowserTab objects
 BrowserTab.prototype.postMessage = function( postData ) {
   
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved ||
-        (this._windowParent && !this._windowParent.resolved) ||
-            (this._windowParent && this._windowParent._parent && !this._windowParent._parent.resolved)) {
-    this.enqueue('postMessage', postData);
-    return;
+  // Cannot send messages if tab is in the closed state
+  if(this.properties.closed === true) {
+    throw new OError(
+      "InvalidStateError",
+      "The current BrowserTab object is in the closed state and therefore is invalid.",
+      DOMException.INVALID_STATE_ERR
+    );
   }
   
-  chrome.tabs.sendMessage( this.properties.id, postData );
-  
-  this.dequeue();
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    chrome.tabs.sendMessage(
+      this.properties.id, 
+      postData, 
+      function() {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
   
 };
 
 // Screenshot API support for BrowserTab objects
 BrowserTab.prototype.getScreenshot = function( callback ) {
   
-  // If current object is not resolved, then enqueue this action
-  if (!this.resolved ||
-        (this._windowParent && !this._windowParent.resolved) ||
-            (this._windowParent && this._windowParent._parent && !this._windowParent._parent.resolved)) {
-    this.enqueue('getScreenshot', callback);
-    return;
+  // Cannot get a screenshot if tab is in the closed state
+  if(this.properties.closed === true) {
+    throw new OError(
+      "InvalidStateError",
+      "The current BrowserTab object is in the closed state and therefore is invalid.",
+      DOMException.INVALID_STATE_ERR
+    );
   }
   
   if( !this._windowParent || this._windowParent.properties.closed === true) {
@@ -2330,63 +3129,136 @@ BrowserTab.prototype.getScreenshot = function( callback ) {
   
   try {
   
-    // Get screenshot of requesting tab
-    chrome.tabs.captureVisibleTab(
-      this._windowParent.properties.id, 
-      {}, 
-      function( nativeCallback ) {
+    // Queue platform action or fire immediately if this object is resolved
+    Queue.enqueue(this, function(done) {
+      chrome.tabs.captureVisibleTab(
+        this._windowParent.properties.id, 
+        {}, 
+        function( nativeCallback ) {
       
-        if( nativeCallback ) {
+          if( nativeCallback ) {
       
-          // Convert the returned dataURL in to an ImageData object and
-          // return via the main callback function argument
-          var canvas = document.createElement('canvas');
-          var ctx = canvas.getContext('2d');
-          var img = new Image();
-          img.onload = function(){
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img,0,0);
+            // Convert the returned dataURL in to an ImageData object and
+            // return via the main callback function argument
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            var img = new Image();
+            img.onload = function(){
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img,0,0);
 
-            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-            // Return the ImageData object to the callee
-            callback.call( this, imageData );
-        
-            this.dequeue();
+              // Return the ImageData object to the callee
+              callback.call( this, imageData );
             
-          }.bind(this);
-          img.src = nativeCallback;
+            }.bind(this);
+            img.src = nativeCallback;
       
-        } else {
+          } else {
         
-          callback.call( this, undefined );
+            callback.call( this, undefined );
         
-        }
+          }
+        
+          done();
     
-      }.bind(this)
-    );
+        }.bind(this)
+      );
+    }.bind(this));
   
   } catch(e) {} 
   
 };
 
-OEX.windows = OEX.windows || (function() {
-  return new BrowserWindowsManager();
-})();
-
-OEX.tabs = OEX.tabs || (function() {
-  return new RootBrowserTabsManager();
-})();
-
-OEC.ToolbarContext = function() {
+BrowserTab.prototype.close = function() {
   
-  OPromise.call( this );
+  if(this.properties.closed == true) {
+    /*throw new OError(
+      "InvalidStateError",
+      "The current BrowserTab object is already closed. Cannot call 'close' on this object.",
+      DOMException.INVALID_STATE_ERR
+    );*/
+    return;
+  }
   
-  // we shouldn't need this on this object since it is never checked 
-  // and nothing is enqueued
-  // (we need OPromise for its event handling capabilities only)
-  this.resolve();
+  // Cannot close pinned tab
+  if(this.properties.pinned == true) {
+    return;
+  }
+  
+  // Set BrowserTab object to closed state
+  this.properties.closed = true;
+  
+  this.properties.active = false;
+  
+  // Detach from parent window
+  this._oldWindowParent = this._windowParent;
+  //this._windowParent = null;
+  
+  // Remove index
+  this._oldIndex = this.properties.index;
+  this.properties.index = undefined;
+  
+  // Remove tab from current collection
+  if(this._oldWindowParent) {
+    this._oldWindowParent.tabs.removeTab( this );
+  } 
+  
+  // Remove tab from global collection
+  OEX.tabs.removeTab( this );
+  
+  // Queue platform action or fire immediately if this object is resolved
+  Queue.enqueue(this, function(done) {
+    if(!this.properties.id) return;
+    chrome.tabs.remove( 
+      this.properties.id, 
+      function() {
+        done();
+      }.bind(this)
+    );
+  }.bind(this));
+
+};
+
+var BrowserTabGroupManager = function( parentObj ) {
+  
+  OEventTarget.call(this);
+  
+  this._parent = parentObj;
+  
+  // Set up 0 mock BrowserTabGroup objects at startup
+  this.length = 0;
+  
+};
+
+BrowserTabGroupManager.prototype = Object.create( OEventTarget.prototype );
+
+BrowserTabGroupManager.prototype.create = function() {
+  
+  // When this feature is not supported in the current user agent then we must
+  // throw a NOT_SUPPORTED_ERR as per the full Opera WinTabs API specification.
+  throw new OError(
+    "NotSupportedError",
+    "The current user agent does not support the Tab Groups feature.",
+    DOMException.NOT_SUPPORTED_ERR
+  );
+  
+};
+
+BrowserTabGroupManager.prototype.getAll = function() {
+  return []; // always empty
+};
+OEX.windows = OEX.windows || new BrowserWindowManager();
+
+OEX.tabs = OEX.tabs || new RootBrowserTabManager();
+
+OEX.tabGroups = OEX.tabGroups || new BrowserTabGroupManager();
+
+var ToolbarContext = function() {
+  
+  OEventTarget.call( this );
   
   // Unfortunately, click events only fire if a popup is not supplied 
   // to a registered browser action in Chromium :(
@@ -2396,11 +3268,11 @@ OEC.ToolbarContext = function() {
   function clickEventHandler(_tab) {
     
     if( this[ 0 ] ) {
-      this[ 0 ].fireEvent( new OEvent('click', {}) );
+      this[ 0 ].dispatchEvent( new OEvent('click', {}) );
     }
     
     // Fire event also on ToolbarContext API stub
-    this.fireEvent( new OEvent('click', {}) );
+    this.dispatchEvent( new OEvent('click', {}) );
     
   }
   
@@ -2408,13 +3280,13 @@ OEC.ToolbarContext = function() {
   
 };
 
-OEC.ToolbarContext.prototype = Object.create( OPromise.prototype );
+ToolbarContext.prototype = Object.create( OEventTarget.prototype );
 
-OEC.ToolbarContext.prototype.createItem = function( toolbarUIItemProperties ) {
+ToolbarContext.prototype.createItem = function( toolbarUIItemProperties ) {
   return new ToolbarUIItem( toolbarUIItemProperties );
 };
 
-OEC.ToolbarContext.prototype.addItem = function( toolbarUIItem ) {
+ToolbarContext.prototype.addItem = function( toolbarUIItem ) {
   
   if( !toolbarUIItem || !(toolbarUIItem instanceof ToolbarUIItem) ) {
     return;
@@ -2423,13 +3295,13 @@ OEC.ToolbarContext.prototype.addItem = function( toolbarUIItem ) {
   this[ 0 ] = toolbarUIItem;
   this.length = 1;
 
-  toolbarUIItem.resolve();
+  toolbarUIItem.resolve(true);
   toolbarUIItem.apply();
   
-  toolbarUIItem.badge.resolve();
+  toolbarUIItem.badge.resolve(true);
   toolbarUIItem.badge.apply();
   
-  toolbarUIItem.popup.resolve();
+  toolbarUIItem.popup.resolve(true);
   toolbarUIItem.popup.apply();
   
   // Enable the toolbar button
@@ -2437,7 +3309,7 @@ OEC.ToolbarContext.prototype.addItem = function( toolbarUIItem ) {
 
 };
 
-OEC.ToolbarContext.prototype.removeItem = function( toolbarUIItem ) {
+ToolbarContext.prototype.removeItem = function( toolbarUIItem ) {
 
   if( !toolbarUIItem || !(toolbarUIItem instanceof ToolbarUIItem) ) {
     return;
@@ -2451,10 +3323,10 @@ OEC.ToolbarContext.prototype.removeItem = function( toolbarUIItem ) {
     // Disable the toolbar button
     chrome.browserAction.disable();
   
-    toolbarUIItem.fireEvent( new OEvent('remove', {}) );
+    toolbarUIItem.dispatchEvent( new OEvent('remove', {}) );
   
     // Fire event on self
-    this.fireEvent( new OEvent('remove', {}) );
+    this.dispatchEvent( new OEvent('remove', {}) );
   
   }
 
@@ -2471,8 +3343,6 @@ var ToolbarBadge = function( properties ) {
   this.properties.backgroundColor = complexColorToHex(properties.backgroundColor);
   this.properties.color = complexColorToHex(properties.color);
   this.properties.display = properties.display;
-  
-  //this.enqueue('apply');
   
 };
 
@@ -2498,10 +3368,14 @@ ToolbarBadge.prototype.__defineGetter__("textContent", function() {
 
 ToolbarBadge.prototype.__defineSetter__("textContent", function( val ) {
   this.properties.textContent = "" + val;
-  if( this.resolved ) {
-    if( this.properties.display === "block" ) {
+  if( this.properties.display === "block" ) {
+    Queue.enqueue(this, function(done) {
+      
       chrome.browserAction.setBadgeText({ "text": ("" + val) });
-    }
+      
+      done();
+      
+    }.bind(this));
   }
 });
 
@@ -2512,9 +3386,13 @@ ToolbarBadge.prototype.__defineGetter__("backgroundColor", function() {
 ToolbarBadge.prototype.__defineSetter__("backgroundColor", function( val ) {
   this.properties.backgroundColor = complexColorToHex("" + val);
 
-  if( this.resolved ) {
+  Queue.enqueue(this, function(done) {
+    
     chrome.browserAction.setBadgeBackgroundColor({ "color": this.properties.backgroundColor });
-  }
+    
+    done();
+    
+  }.bind(this));
 });
 
 ToolbarBadge.prototype.__defineGetter__("color", function() {
@@ -2533,14 +3411,22 @@ ToolbarBadge.prototype.__defineGetter__("display", function() {
 ToolbarBadge.prototype.__defineSetter__("display", function( val ) {
   if(("" + val).toLowerCase() === "block") {
     this.properties.display = "block";
-    if( this.resolved ) {
+    Queue.enqueue(this, function(done) {
+
       chrome.browserAction.setBadgeText({ "text": this.properties.textContent });
-    }
+
+      done();
+
+    }.bind(this));
   } else {
     this.properties.display = "none";
-    if( this.resolved ) {
+    Queue.enqueue(this, function(done) {
+
       chrome.browserAction.setBadgeText({ "text": "" });
-    }
+
+      done();
+
+    }.bind(this));
   }
 });
 
@@ -2555,8 +3441,6 @@ var ToolbarPopup = function( properties ) {
   this.properties.width = properties.width;
   this.properties.height = properties.height;
   
-  //this.enqueue('apply');
-
 };
 
 ToolbarPopup.prototype = Object.create( OPromise.prototype );
@@ -2575,9 +3459,14 @@ ToolbarPopup.prototype.__defineGetter__("href", function() {
 
 ToolbarPopup.prototype.__defineSetter__("href", function( val ) {
   this.properties.href = "" + val;
-  if( this.resolved ) {
+  
+  Queue.enqueue(this, function(done) {
+
     chrome.browserAction.setPopup({ "popup": ("" + val) });
-  }
+
+    done();
+
+  }.bind(this));
 });
 
 ToolbarPopup.prototype.__defineGetter__("width", function() {
@@ -2614,8 +3503,6 @@ var ToolbarUIItem = function( properties ) {
   this.properties.popup = new ToolbarPopup( properties.popup || {} );
   this.properties.badge = new ToolbarBadge( properties.badge || {} );
   
-  //this.enqueue('apply');
-  
 };
 
 ToolbarUIItem.prototype = Object.create( OPromise.prototype );
@@ -2647,14 +3534,22 @@ ToolbarUIItem.prototype.__defineSetter__("disabled", function( val ) {
   if( this.properties.disabled !== val ) {
     if( val === true || val === "true" || val === 1 || val === "1" ) {
       this.properties.disabled = true;
-      if( this.resolved ) {
+      Queue.enqueue(this, function(done) {
+
         chrome.browserAction.disable();
-      }
+
+        done();
+
+      }.bind(this));
     } else {
       this.properties.disabled = false;
-      if( this.resolved ) {
+      Queue.enqueue(this, function(done) {
+
         chrome.browserAction.enable();
-      }
+
+        done();
+
+      }.bind(this));
     }
   }
 });
@@ -2666,9 +3561,13 @@ ToolbarUIItem.prototype.__defineGetter__("title", function() {
 ToolbarUIItem.prototype.__defineSetter__("title", function( val ) {
   this.properties.title = "" + val;
   
-  if( this.resolved ) {
+  Queue.enqueue(this, function(done) {
+
     chrome.browserAction.setTitle({ "title": (this.title) });
-  }
+
+    done();
+
+  }.bind(this));
 });
 
 ToolbarUIItem.prototype.__defineGetter__("icon", function() {
@@ -2678,9 +3577,13 @@ ToolbarUIItem.prototype.__defineGetter__("icon", function() {
 ToolbarUIItem.prototype.__defineSetter__("icon", function( val ) {
   this.properties.icon = "" + val;
   
-  if( this.resolved ) {
+  Queue.enqueue(this, function(done) {
+
     chrome.browserAction.setIcon({ "path": this.icon });
-  }
+
+    done();
+
+  }.bind(this));
 });
 
 ToolbarUIItem.prototype.__defineGetter__("popup", function() {
@@ -2691,11 +3594,9 @@ ToolbarUIItem.prototype.__defineGetter__("badge", function() {
   return this.properties.badge;
 });
 
-OEC.toolbar = OEC.toolbar || (function() {
-  return new OEC.ToolbarContext();
-})();
+OEC.toolbar = OEC.toolbar || new ToolbarContext();
 
-  if (window.opera) {
+  if (global.opera) {
     isReady = true;
 
     // Make scripts also work in Opera <= version 12
@@ -2723,14 +3624,14 @@ OEC.toolbar = OEC.toolbar || (function() {
       var hasFired_DOMContentLoaded = false,
           hasFired_Load = false;
 
-      document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
+      global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
         hasFired_DOMContentLoaded = true;
-        document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
+        global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
       }, true);
     
-      window.addEventListener("load", function handle_Load() {
+      global.addEventListener("load", function handle_Load() {
         hasFired_Load = true;
-        window.removeEventListener("load", handle_Load, true);
+        global.removeEventListener("load", handle_Load, true);
       }, true);
 
       function interceptAddEventListener(target, _name) {
@@ -2746,7 +3647,7 @@ OEC.toolbar = OEC.toolbar || (function() {
             }
           
             if (isReady) {
-              fn.call(window);
+              fn.call(global);
             } else {
               fns[_name.toLowerCase()].push(fn);
             }
@@ -2764,9 +3665,9 @@ OEC.toolbar = OEC.toolbar || (function() {
 
       }
 
-      interceptAddEventListener(window, 'load');
-      interceptAddEventListener(document, 'domcontentloaded');
-      interceptAddEventListener(window, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+      interceptAddEventListener(global, 'load');
+      interceptAddEventListener(global.document, 'domcontentloaded');
+      interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
 
       function fireEvent(name, target) {
         var evtName = name.toLowerCase();
@@ -2780,7 +3681,7 @@ OEC.toolbar = OEC.toolbar || (function() {
       }
 
       function ready() {
-        window.setTimeout(function() {
+        global.setTimeout(function() {
 
           if (isReady) {
             return;
@@ -2788,7 +3689,7 @@ OEC.toolbar = OEC.toolbar || (function() {
 
           // Handle queued opera 'isReady' event functions
           for (var i = 0, len = fns['isready'].length; i < len; i++) {
-            fns['isready'][i].call(window);
+            fns['isready'][i].call(global);
           }
           fns['isready'] = []; // clear
           
@@ -2804,7 +3705,7 @@ OEC.toolbar = OEC.toolbar || (function() {
             // (always synthesized in Chromium Content Scripts)
             if (hasFired_DOMContentLoaded || hasFired_Load || currentTime >= domContentLoadedTimeoutOverride) {
               
-              fireEvent('domcontentloaded', document);
+              fireEvent('domcontentloaded', global.document);
               
               if(currentTime >= domContentLoadedTimeoutOverride) {
                 console.warn('document.domcontentloaded event fired on check timeout');
@@ -2835,7 +3736,7 @@ OEC.toolbar = OEC.toolbar || (function() {
                   _delayedExecuteEvents = [];
 
                 } else {
-                  window.setTimeout(function() {
+                  global.setTimeout(function() {
                     fireLoad();
                   }, 50);
                 }
@@ -2843,7 +3744,7 @@ OEC.toolbar = OEC.toolbar || (function() {
               })();
               
             } else {
-              window.setTimeout(function() {
+              global.setTimeout(function() {
                 fireDOMContentLoaded();
               }, 50);
             }
@@ -2874,7 +3775,7 @@ OEC.toolbar = OEC.toolbar || (function() {
             // spin the loop until everything is working
             // or we receive a timeout override (handled
             // in next loop, above)
-            window.setTimeout(function() {
+            global.setTimeout(function() {
               holdReady();
             }, 20);
             return;
@@ -2891,7 +3792,7 @@ OEC.toolbar = OEC.toolbar || (function() {
         // execute the function immediately.
         // otherwise, queue it up until isReady
         if (isReady) {
-          fn.call(window);
+          fn.call(global);
         } else {
           fns['isready'].push(fn);
         }
