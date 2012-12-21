@@ -283,7 +283,7 @@ class Oex2Crx:
 			# create separate entries for all injected scripts
 			csrs = ""
 			for cs in injscrlist:
-				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start"},'
+				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
 			csrs = csrs[:-1]
 			manifest += ',\n"content_scripts": [' + csrs + ']'
 
@@ -380,18 +380,19 @@ class Oex2Crx:
 		else:
 			# move inline scripts into a new external script
 			inlinescrdata = ""
+			scount = 0
 			for scr in doc.getElementsByTagName("script"):
 				sname = scr.getAttribute("src")
 				if not sname:
 					if (scr.childNodes[0]):
 						sd = scr.childNodes[0].nodeValue.strip()
 						if sd:
-							inlinescrdata += sd
-							scr.parentNode.removeChild(scr)
-
-			if inlinescrdata:
-				# not more than one per type, well
-				crx.writestr("allinlines_" + type + ".js", inlinescrdata)
+							scount += 1
+							iscr = doc.createElement("script")
+							iscr_src = "inline_script_" + type + "_" + str(scount) + ".js"
+							iscr.setAttribute("src", iscr_src)
+							scr.parentNode.replaceChild(iscr, scr)
+							crx.writestr(iscr_src, sd)
 
 		shim = doc.createElement("script")
 		if type == "index":
