@@ -213,7 +213,7 @@ class Oex2Crx:
 							f_excludes.append((line[epos + 9:]).strip())
 					if debug: print(("Includes: " , includes, " Excludes: ", excludes))
 				if not len(f_includes):
-					f_includes = ["http://*/*", "https://*/*"]
+					f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
 				data = str.encode(data, 'utf-8')
@@ -259,8 +259,10 @@ class Oex2Crx:
 				inj_scripts = '"' + oex_injscr_shim  + '", ' + inj_scripts
 
 			for s in includes:
+				# double-quoted string
 				matches = matches + '"' + s + '",'
 			for s in excludes:
+				# double-quoted string
 				discards = discards + '"' + s + '",'
 
 			inj_scripts = inj_scripts[:-1]
@@ -269,7 +271,7 @@ class Oex2Crx:
 			if debug: print(("Injected scripts:" + inj_scripts))
 			if not matches:
 				# match any page
-				matches = '"http://*/*", "https://*/*"'
+				matches = '"<all_urls>"'
 
 		manifest = ""
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
@@ -283,7 +285,7 @@ class Oex2Crx:
 			# create separate entries for all injected scripts
 			csrs = ""
 			for cs in injscrlist:
-				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_matches": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
+				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ["<all_urls>"], "include_globs": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_globs": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
 			csrs = csrs[:-1]
 			manifest += ',\n"content_scripts": [' + csrs + ']'
 
