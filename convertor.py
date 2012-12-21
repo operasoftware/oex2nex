@@ -32,7 +32,7 @@ oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 
 #Header for Chrome 24(?) compatible .crx package
-crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00";
+crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
 
 class Oex2Crx:
 	"""
@@ -274,11 +274,11 @@ class Oex2Crx:
 		manifest = ""
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
 		if iconfile is not None:
-			manifest += ',\n"icons" : {"128" : "' + iconfile + '"}';
+			manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
 		if has_popup:
-			manifest += ',\n"browser_action" : {"default_popup" : "popup.html"}';
+			manifest += ',\n"browser_action" : {}' # Let the APIs do their job  #"default_popup" : "popup.html"}'
 		if has_option:
-			manifest += ',\n"options_page" : "options.html"';
+			manifest += ',\n"options_page" : "options.html"'
 		if has_injscrs:
 			# create separate entries for all injected scripts
 			csrs = ""
@@ -585,7 +585,7 @@ def main(args = None):
 	if args.fetch:
 		fetch_shims()
 	convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.isdir)
-	convertor.convert();
+	convertor.convert()
 	sys.exit(0)
 
 
