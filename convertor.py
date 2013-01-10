@@ -1,7 +1,6 @@
 #!python
 import os, sys, re, zipfile
 import xml.etree.ElementTree as etree
-
 try:
 	import html5lib
 except ImportError:
@@ -87,9 +86,9 @@ class Oex2Crx:
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
 		crx = self._crx
-		configStr = oex.read("config.xml")
+		configStr = unicode( oex.read("config.xml"), 'UTF-8' )
 		if debug: print(("Config.xml", configStr))
-		root = etree.fromstring(configStr)
+		root = etree.fromstring(configStr.encode('UTF-8'))
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
 		def _get_best_elem(xmltree, tag):
@@ -216,11 +215,13 @@ class Oex2Crx:
 					f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
-				data = str.encode(data, 'utf-8')
+# do we actually *need* to make sure it's a Unicode string and not a set of UTF-bytes at this point?
+# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or Unicode
+#				data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
 				data = self._update_scopes(data)
 				# wrap all scripts inside opera.isReady()
-				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
+				data = "opera.isReady(function ()\n{\n" + data + "\n});\n" # Important: ONLY ASCII in these strings, please..
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
 				resources += ('"' + it.filename + '",')
 
@@ -394,7 +395,13 @@ class Oex2Crx:
 							iscr_src = "inline_script_" + type + "_" + str(scount) + ".js"
 							iscr.setAttribute("src", iscr_src)
 							scr.parentNode.replaceChild(iscr, scr)
-							crx.writestr(iscr_src, sd)
+							try:
+							  crx.writestr(iscr_src, sd)
+							except UnicodeEncodeError:
+							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at this point so we can just encode it as UTF-8..
+							  # If we at this point somehow end up with data that's already UTF-8 encoded, we'll be in trouble.. will that throw or just create mojibake in the resulting extension, I wonder?
+							  crx.writestr(iscr_src, sd.encode('utf-8'))
+							    
 
 		shim = doc.createElement("script")
 		if type == "index":
