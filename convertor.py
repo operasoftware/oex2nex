@@ -216,7 +216,7 @@ class Oex2Crx:
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
 # do we actually *need* to make sure it's a Unicode string and not a set of UTF-bytes at this point?
-# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or Unicode
+# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or ASCII
 #				data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
 				data = self._update_scopes(data)
