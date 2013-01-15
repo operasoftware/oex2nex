@@ -215,12 +215,13 @@ class Oex2Crx:
 					f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
-# do we actually *need* to make sure it's a Unicode string and not a set of UTF-bytes at this point?
-# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or ASCII
+				# do we actually *need* to make sure it's a Unicode string and not a set of UTF-bytes at this point?
+				# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or ASCII
 #				data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
 				data = self._update_scopes(data)
 				# wrap all scripts inside opera.isReady()
+				if debug: print(('Wrap scripts in opera.isReady()', it.filename))
 				data = "opera.isReady(function ()\n{\n" + data + "\n});\n" # Important: ONLY ASCII in these strings, please..
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
 				resources += ('"' + it.filename + '",')
@@ -308,7 +309,7 @@ class Oex2Crx:
 		so that the scripts used in the oex work with the shim """
 
 		try:
-			jstree = JSParser().parse(scriptdata)
+			jstree = JSParser().parse(unicode(scriptdata, 'UTF-8'))
 		except:
 			print("ERROR: script parsing failed. Some scripts might need manual fixing.")
 			return scriptdata
