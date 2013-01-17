@@ -4,13 +4,16 @@ import xml.etree.ElementTree as etree
 try:
 	import html5lib
 except ImportError:
-	print("""\nERROR:\nYou need to install module html5lib to get this working.\nThe easy way to do this is to run\neasy_install html5lib\nwhere easy_install is available as part of your Python installation.""")
+	print("""\nERROR:\nYou need to install module html5lib to get this working.\n
+		The easy way to do this is to run\neasy_install html5lib\nwhere easy_install 
+		is available as part of your Python installation.""")
 	sys.exit(1)
 
 try:
 	from slimit.parser import Parser as JSParser
 except ImportError:
-	print("ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'.")
+	print("""ERROR: Could not import slimit module\nIf the module is not installed
+		please install it.\ne.g. by running the command 'easy_install slimit'.""")
 	sys.exit(1)
 
 from astwalker import ASTWalker
@@ -25,7 +28,8 @@ indexdoc = "index.html"
 popupdoc = "popup.html"
 optionsdoc = "options.html"
 shim_dir = "oex_shim/"
-shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/" #"http://addons.opera.com/tools/oex_shim/"
+#"http://addons.opera.com/tools/oex_shim/"
+shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
 oex_bg_shim =  shim_dir + "operaextensions_background.js"
 oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
@@ -214,14 +218,18 @@ class Oex2Crx:
 					f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
 				injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
 			elif not merge_scripts and it.filename.endswith(".js"):
-				# do we actually *need* to make sure it's a Unicode string and not a set of UTF-bytes at this point?
-				# AFAIK we don't - as long as we're only appending ASCII characters, Python doesn't actually care if data is originally UTF-8 or ASCII
-#				data = str.encode(data, 'utf-8')
+				# do we actually *need* to make sure it's a Unicode string and not a set of
+				# UTF-bytes at this point? AFAIK we don't - as long as we're only appending
+				# ASCII characters, Python doesn't actually care if data is originally 
+				# UTF-8 or ASCII
+				
+				# data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
 				data = self._update_scopes(data)
 				# wrap all scripts inside opera.isReady()
 				if debug: print(('Wrap scripts in opera.isReady()', it.filename))
-				data = "opera.isReady(function ()\n{\n" + data + "\n});\n" # Important: ONLY ASCII in these strings, please..
+				# Important: ONLY ASCII in these strings, please..
+				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
 				resources += ('"' + it.filename + '",')
 
@@ -277,18 +285,20 @@ class Oex2Crx:
 		manifest = ""
 		manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
 		if iconfile is not None:
+			# any way to include multiple icons if the oex has them?
 			manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
 		if has_popup:
 			manifest += ',\n"browser_action" : {}' # Let the APIs do their job  #"default_popup" : "popup.html"}'
+		#probably have an if has_toolbar here, or iterative over our AST walker to insert stuff into manifest.json
 		if has_option:
 			manifest += ',\n"options_page" : "options.html"'
 		if has_injscrs:
 			# create separate entries for all injected scripts
-			csrs = ""
+			content_scripts = ""
 			for cs in injscrlist:
-				csrs += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ["<all_urls>"], "include_globs": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_globs": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
-			csrs = csrs[:-1]
-			manifest += ',\n"content_scripts": [' + csrs + ']'
+				content_scripts += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ["<all_urls>"], "include_globs": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_globs": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
+			content_scripts = content_scripts[:-1]
+			manifest += ',\n"content_scripts": [' + content_scripts + ']'
 
 		# add web_accessible_resources
 		# all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
@@ -345,7 +355,8 @@ class Oex2Crx:
 			try:
 				self._crx.extractall(self._out_file)
 			except IOError as e:
-				print(("ERROR: Threw exception while extracting crx file to the directory: ", self._out_file, "\nGot:", e , "\nIs there a file by the same name?"))
+				print(("ERROR: Threw exception while extracting crx file to the directory: ", 
+					self._out_file, "\nGot:", e , "\nIs there a file by the same name?"))
 		self._oex.close()
 		self._crx.close()
 		# Let us not sign if the output requested is for directory
@@ -401,10 +412,12 @@ class Oex2Crx:
 							try:
 							  crx.writestr(iscr_src, script_data)
 							except UnicodeEncodeError:
-							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at this point so we can just encode it as UTF-8..
-							  # If we at this point somehow end up with data that's already UTF-8 encoded, we'll be in trouble.. will that throw or just create mojibake in the resulting extension, I wonder?
+							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at 
+								# this point so we can just encode it as UTF-8..
+							  # If we at this point somehow end up with data that's already UTF-8 
+								# encoded, we'll be in trouble.. will that throw or just create mojibake
+								# in the resulting extension, I wonder?
 							  crx.writestr(iscr_src, script_data.encode('utf-8'))
-							    
 
 		shim = doc.createElement("script")
 		if type == "index":
