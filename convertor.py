@@ -151,7 +151,6 @@ class Oex2Crx:
 
 		shim_wrap = self._shim_wrap
 		# parsing includes and excludes from the included scripts
-		# Can excludes be used somewhere in manifest.json?
 		includes = []
 		excludes = []
 		injscrlist  = []
