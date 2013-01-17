@@ -370,41 +370,41 @@ class Oex2Crx:
 		# FIXME: use the correct base for the @src (mostly this is the root [''])
 		# Remove scripts only if we are merging all of them
 		if merge_scripts:
-			for scr in doc.getElementsByTagName("script"):
-				sname = scr.getAttribute("src")
-				if debug: 'Script from ' + type + ' document:' + sname
-				if sname:
-					if debug: print(('reading script data:', sname))
+			for script in doc.getElementsByTagName("script"):
+				script_name = script.getAttribute("src")
+				if debug: 'Script from ' + type + ' document:' + script_name
+				if script_name:
+					if debug: print(('reading script data:', script_name))
 					try:
-						scriptdata += (oex.read(sname)).encode("utf-8")
+						scriptdata += (oex.read(script_name)).encode("utf-8")
 					except KeyError:
-						print(("The file " + sname + " was not found in archive."))
+						print(("The file " + script_name + " was not found in archive."))
 				else: # could be an inline script
 					# but popups could not use inline scripts in crx packages
-					if (scr.childNodes[0]):
-						scriptdata += scr.childNodes[0].nodeValue
-				scr.parentNode.removeChild(scr)
+					if (script.childNodes[0]):
+						scriptdata += script.childNodes[0].nodeValue
+				script.parentNode.removeChild(script)
 		else:
 			# move inline scripts into a new external script
 			inlinescrdata = ""
-			scount = 0
-			for scr in doc.getElementsByTagName("script"):
-				sname = scr.getAttribute("src")
-				if not sname:
-					if (scr.childNodes[0]):
-						sd = scr.childNodes[0].nodeValue.strip()
-						if sd:
-							scount += 1
+			script_count = 0
+			for script in doc.getElementsByTagName("script"):
+				script_name = script.getAttribute("src")
+				if not script_name:
+					if (script.childNodes[0]):
+						script_data = script.childNodes[0].nodeValue.strip()
+						if script_data:
+							script_count += 1
 							iscr = doc.createElement("script")
-							iscr_src = "inline_script_" + type + "_" + str(scount) + ".js"
+							iscr_src = "inline_script_" + type + "_" + str(script_count) + ".js"
 							iscr.setAttribute("src", iscr_src)
-							scr.parentNode.replaceChild(iscr, scr)
+							script.parentNode.replaceChild(iscr, script)
 							try:
-							  crx.writestr(iscr_src, sd)
+							  crx.writestr(iscr_src, script_data)
 							except UnicodeEncodeError:
 							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at this point so we can just encode it as UTF-8..
 							  # If we at this point somehow end up with data that's already UTF-8 encoded, we'll be in trouble.. will that throw or just create mojibake in the resulting extension, I wonder?
-							  crx.writestr(iscr_src, sd.encode('utf-8'))
+							  crx.writestr(iscr_src, script_data.encode('utf-8'))
 							    
 
 		shim = doc.createElement("script")
