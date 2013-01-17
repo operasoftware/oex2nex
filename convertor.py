@@ -309,10 +309,13 @@ class Oex2Crx:
 		so that the scripts used in the oex work with the shim """
 
 		try:
-			jstree = JSParser().parse(unicode(scriptdata, 'UTF-8'))
+			jstree = JSParser().parse(scriptdata)
 		except:
-			print("ERROR: script parsing failed. Some scripts might need manual fixing.")
-			return scriptdata
+			try:
+				jstree = JSParser().parse(unicode(scriptdata, 'UTF-8'))
+			except:
+				print("ERROR: script parsing failed. Some scripts might need manual fixing.")
+				return scriptdata
 
 		walker = ASTWalker(debug)
 		aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
