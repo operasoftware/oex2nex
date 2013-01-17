@@ -1,2 +1,4 @@
 .DS_Store
 *.pyc
+# a place to convert extensions during testing/debugging
+converted/
