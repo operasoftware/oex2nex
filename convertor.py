@@ -153,6 +153,15 @@ class Oex2Crx:
 		if icon is not None:
 			if icon.find("[@src]") is not None:
 				iconfile = icon.attrib["src"]
+		# default_locale should be set in manifest.json *only* if there is a corresponding _locale/foo folder in the input
+		default_locale = root.attrib["defaultlocale"]
+		if default_locale :
+			try:
+				if debug : print( 'found default locale attribute: ' + default_locale )
+				oex.getinfo('_locales/' + default_locale + '/messages.json')
+			except KeyError:
+				if debug : print( 'no _locales/' + default_locale + '/messages.json in source zip file, ignoring default locale' )
+				default_locale = ''
 
 		shim_wrap = self._shim_wrap
 		# parsing includes and excludes from the included scripts
@@ -293,6 +302,9 @@ class Oex2Crx:
 		#probably have an if has_toolbar here, or iterative over our AST walker to insert stuff into manifest.json
 		if has_option:
 			manifest += ',\n"options_page" : "options.html"'
+		# default_locale should be set in manifest.json *only* if there is a corresponding _locale/foo folder in the input
+		if default_locale:
+			manifest += ',\n"default_locale" : "'+default_locale+'"'
 		if has_injscrs:
 			# create separate entries for all injected scripts
 			content_scripts = ""
@@ -336,7 +348,8 @@ class Oex2Crx:
 	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
-
+		# If script data has a BOM, remove it
+		scriptdata = re.sub( r'^\xef\xbb\xbf', '', scriptdata  )
 		try:
 			jstree = JSParser().parse(scriptdata)
 		except:
