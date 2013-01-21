@@ -33,6 +33,7 @@ shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shi
 oex_bg_shim =  shim_dir + "operaextensions_background.js"
 oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
+oex_resource_loader = shim_dir + "popup_resourceloader"
 
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
@@ -312,7 +313,14 @@ class Oex2Crx:
 
 		if debug: print(("Manifest: ", manifest))
 		crx.writestr("manifest.json", manifest)
-
+		if debug: print( "Adding resource_loader files" )
+		crx.writestr(oex_resource_loader+".html", """<!DOCTYPE html>
+<style>* { margin: 0; padding: 0; }</style>
+<iframe seamless width="100%" height="100%" style="display: block; position: absolute;"></iframe>
+<script src="popup_resourceloader.js"></script>""")
+		crx.writestr(oex_resource_loader+".js", """var u = /\?(.*)$/.exec(window.location.search);
+if(u && u[1]) { var f = document.querySelector('iframe'); f.src = 
+ window.atob(u[1]); }""")
 	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
@@ -412,12 +420,12 @@ class Oex2Crx:
 							try:
 							  crx.writestr(iscr_src, script_data)
 							except UnicodeEncodeError:
-							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at 
+								# oops non-ASCII bytes found. *Presumably* we have Unicode already at 
 								# this point so we can just encode it as UTF-8..
-							  # If we at this point somehow end up with data that's already UTF-8 
+								# If we at this point somehow end up with data that's already UTF-8 
 								# encoded, we'll be in trouble.. will that throw or just create mojibake
 								# in the resulting extension, I wonder?
-							  crx.writestr(iscr_src, script_data.encode('utf-8'))
+								crx.writestr(iscr_src, script_data.encode('utf-8'))
 
 		shim = doc.createElement("script")
 		if type == "index":
