@@ -122,7 +122,7 @@ class Oex2Crx:
 			version = root.attrib["version"]
 			#  CRX version need to be of the form 12.34.454.23232
 			#  P&C version could be any string that has a number and such
-			re.sub(r'[^\d\.]+','.',version)
+			version = re.sub(r'[^\d\.]+','.',version)
 			version = version.strip('.')
 		else:
 			version = "1.0.0.1"
