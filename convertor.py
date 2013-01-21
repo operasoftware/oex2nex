@@ -315,12 +315,24 @@ class Oex2Crx:
 		crx.writestr("manifest.json", manifest)
 		if debug: print( "Adding resource_loader files" )
 		crx.writestr(oex_resource_loader+".html", """<!DOCTYPE html>
-<style>* { margin: 0; padding: 0; }</style>
-<iframe seamless width="100%" height="100%" style="display: block; position: absolute;"></iframe>
-<script src="popup_resourceloader.js"></script>""")
-		crx.writestr(oex_resource_loader+".js", """var u = /\?(.*)$/.exec(window.location.search);
-if(u && u[1]) { var f = document.querySelector('iframe'); f.src = 
- window.atob(u[1]); }""")
+<style>body { margin: 0; padding: 0; min-width: 300px; min-height: 
+ 200px; }</style>
+<iframe seamless width="100%" height="100%" style="display: block; 
+ position: absolute;"></iframe>
+<script src="/oex_shim/popup_resourceloader.js"></script>""")
+		crx.writestr(oex_resource_loader+".js", """function getParam( key ) {
+   key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+   var regexS = "[\\?&]" + key + "=([^&#]*)";
+   var regex = new RegExp(regexS);
+   var results = regex.exec(window.location.search);
+   return results == null ? "" : 
+ window.decodeURIComponent(results[1].replace(/\+/g, " "));
+ }
+
+ var s = getParam('href'), w = getParam('w'), h = getParam('h');
+ if(s !== "") { document.querySelector('iframe').src = window.atob(s); }
+ if(w !== "") { document.body.style.minWidth = w.replace(/\D/g,'') + "px"; }
+ if(h !== "") { document.body.style.minHeight = h.replace(/\D/g,'') + "px"; }""")
 	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
