@@ -33,6 +33,7 @@ shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shi
 oex_bg_shim =  shim_dir + "operaextensions_background.js"
 oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
+oex_resource_loader = shim_dir + "popup_resourceloader"
 
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
@@ -121,7 +122,7 @@ class Oex2Crx:
 			version = root.attrib["version"]
 			#  CRX version need to be of the form 12.34.454.23232
 			#  P&C version could be any string that has a number and such
-			re.sub(r'[^\d\.]+','.',version)
+			version = re.sub(r'[^\d\.]+','.',version)
 			version = version.strip('.')
 		else:
 			version = "1.0.0.1"
@@ -312,7 +313,26 @@ class Oex2Crx:
 
 		if debug: print(("Manifest: ", manifest))
 		crx.writestr("manifest.json", manifest)
+		if debug: print( "Adding resource_loader files" )
+		crx.writestr(oex_resource_loader+".html", """<!DOCTYPE html>
+<style>body { margin: 0; padding: 0; min-width: 300px; min-height: 
+ 200px; }</style>
+<iframe seamless width="100%" height="100%" style="display: block; 
+ position: absolute;"></iframe>
+<script src="/oex_shim/popup_resourceloader.js"></script>""")
+		crx.writestr(oex_resource_loader+".js", """function getParam( key ) {
+   key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+   var regexS = "[\\?&]" + key + "=([^&#]*)";
+   var regex = new RegExp(regexS);
+   var results = regex.exec(window.location.search);
+   return results == null ? "" : 
+ window.decodeURIComponent(results[1].replace(/\+/g, " "));
+ }
 
+ var s = getParam('href'), w = getParam('w'), h = getParam('h');
+ if(s !== "") { document.querySelector('iframe').src = window.atob(s); }
+ if(w !== "") { document.body.style.minWidth = w.replace(/\D/g,'') + "px"; }
+ if(h !== "") { document.body.style.minHeight = h.replace(/\D/g,'') + "px"; }""")
 	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
@@ -412,12 +432,12 @@ class Oex2Crx:
 							try:
 							  crx.writestr(iscr_src, script_data)
 							except UnicodeEncodeError:
-							  # oops non-ASCII bytes found. *Presumably* we have Unicode already at 
+								# oops non-ASCII bytes found. *Presumably* we have Unicode already at 
 								# this point so we can just encode it as UTF-8..
-							  # If we at this point somehow end up with data that's already UTF-8 
+								# If we at this point somehow end up with data that's already UTF-8 
 								# encoded, we'll be in trouble.. will that throw or just create mojibake
 								# in the resulting extension, I wonder?
-							  crx.writestr(iscr_src, script_data.encode('utf-8'))
+								crx.writestr(iscr_src, script_data.encode('utf-8'))
 
 		shim = doc.createElement("script")
 		if type == "index":
