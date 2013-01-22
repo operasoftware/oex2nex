@@ -88,10 +88,19 @@ class Oex2Crx:
 		necessary conversion to prepare the manifest.json of the crx file, add
 		wrappers and shims to make the crx work and writes the crx package.
 		"""
+		import codecs
+
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
 		crx = self._crx
-		configStr = oex.read("config.xml").encode('UTF-8')
+		configStr = oex.read("config.xml")
+		#Handle UTF-8 BOM here; do we care about other encodings?
+		if configStr[:3] == codecs.BOM_UTF8 :
+			configStr = configStr[3:]
+		try:
+			configStr = configStr.encode('UTF-8')
+		except UnicodeDecodeError as e:
+			pass
 		if debug: print(("Config.xml", configStr))
 		root = etree.fromstring(configStr)
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
