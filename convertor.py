@@ -5,7 +5,7 @@ try:
 	import html5lib
 except ImportError:
 	print("""\nERROR:\nYou need to install module html5lib to get this working.\n
-		The easy way to do this is to run\neasy_install html5lib\nwhere easy_install 
+		The easy way to do this is to run\neasy_install html5lib\nwhere easy_install
 		is available as part of your Python installation.""")
 	sys.exit(1)
 
@@ -91,7 +91,7 @@ class Oex2Crx:
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
 		crx = self._crx
-		configStr = unicode( oex.read("config.xml"), 'UTF-8' )
+		configStr = str(oex.read("config.xml"), 'UTF-8')
 		if debug: print(("Config.xml", configStr))
 		root = etree.fromstring(configStr.encode('UTF-8'))
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
@@ -101,7 +101,7 @@ class Oex2Crx:
 			Adds a permission to the permission list
 			"""
 			permissions.append(perm)
-				
+
 		def _get_permissions():
 			"""
 			Serializes permissions list to be appended to manifest.json
@@ -246,9 +246,9 @@ class Oex2Crx:
 			elif not merge_scripts and it.filename.endswith(".js"):
 				# do we actually *need* to make sure it's a Unicode string and not a set of
 				# UTF-bytes at this point? AFAIK we don't - as long as we're only appending
-				# ASCII characters, Python doesn't actually care if data is originally 
+				# ASCII characters, Python doesn't actually care if data is originally
 				# UTF-8 or ASCII
-				
+
 				# data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
 				data = self._update_scopes(data)
@@ -343,9 +343,9 @@ class Oex2Crx:
 		crx.writestr("manifest.json", manifest)
 		if debug: print( "Adding resource_loader files" )
 		crx.writestr(oex_resource_loader+".html", """<!DOCTYPE html>
-<style>body { margin: 0; padding: 0; min-width: 300px; min-height: 
+<style>body { margin: 0; padding: 0; min-width: 300px; min-height:
  200px; }</style>
-<iframe seamless width="100%" height="100%" style="display: block; 
+<iframe seamless width="100%" height="100%" style="display: block;
  position: absolute;"></iframe>
 <script src="/oex_shim/popup_resourceloader.js"></script>""")
 		crx.writestr(oex_resource_loader+".js", """function getParam( key ) {
@@ -353,7 +353,7 @@ class Oex2Crx:
    var regexS = "[\\?&]" + key + "=([^&#]*)";
    var regex = new RegExp(regexS);
    var results = regex.exec(window.location.search);
-   return results == null ? "" : 
+   return results == null ? "" :
  window.decodeURIComponent(results[1].replace(/\+/g, " "));
  }
 
@@ -370,7 +370,7 @@ class Oex2Crx:
 			jstree = JSParser().parse(scriptdata)
 		except:
 			try:
-				jstree = JSParser().parse(unicode(scriptdata, 'UTF-8'))
+				jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
 			except:
 				print("ERROR: script parsing failed. Some scripts might need manual fixing.")
 				return scriptdata
@@ -404,7 +404,7 @@ class Oex2Crx:
 			try:
 				self._crx.extractall(self._out_file)
 			except IOError as e:
-				print(("ERROR: Threw exception while extracting crx file to the directory: ", 
+				print(("ERROR: Threw exception while extracting crx file to the directory: ",
 					self._out_file, "\nGot:", e , "\nIs there a file by the same name?"))
 		self._oex.close()
 		self._crx.close()
@@ -461,9 +461,9 @@ class Oex2Crx:
 							try:
 							  crx.writestr(iscr_src, script_data)
 							except UnicodeEncodeError:
-								# oops non-ASCII bytes found. *Presumably* we have Unicode already at 
+								# oops non-ASCII bytes found. *Presumably* we have Unicode already at
 								# this point so we can just encode it as UTF-8..
-								# If we at this point somehow end up with data that's already UTF-8 
+								# If we at this point somehow end up with data that's already UTF-8
 								# encoded, we'll be in trouble.. will that throw or just create mojibake
 								# in the resulting extension, I wonder?
 								crx.writestr(iscr_src, script_data.encode('utf-8'))
