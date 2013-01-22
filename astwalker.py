@@ -26,7 +26,7 @@ class ASTWalker(NodeVisitor):
 	# - as we traverse the first level of program find if there are any aliases to window or opera or window.widget or window.opera
 	# - look for widget.preferences, window.widget.preferences
 	# repeat this pattern for opera.contexts.toolbar
-
+	
 	def __init__(self, debug=False):
 		self._debug = debug
 
@@ -75,6 +75,7 @@ class ASTWalker(NodeVisitor):
 					if debug: yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
 				# assignments for widget.preferences and .toolbar
 				if isinstance(child, ast.Assign):
+					if debug: print('>>>----> ast.Assign: ', child.to_ecma())
 					# also need to check for things like;
 					# var prefs = widget.preferences; ...; prefs.foo = 34; (we need to convert the .foo to setItem('foo', 34)
 					for label in aliases["preferences"]:
@@ -82,7 +83,6 @@ class ASTWalker(NodeVisitor):
 							if debug: print('pref label:', label)
 							datf = dada = daid = val = None
 							for da in child:
-								if debug: print('dotaccessor:', da, da.to_ecma())
 								if isinstance(da, ast.DotAccessor):
 									dat = da.to_ecma()
 									for dac in da:
@@ -100,9 +100,12 @@ class ASTWalker(NodeVisitor):
 							# not much chance that we would again match at the same place
 							break
 				if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
+					if debug: print('>>>----> FunctionCall and DotAccessor: ', child.to_ecma())
 					# var tb = opera.contexts.toolbar; ... ; tb.addItem(props);
 					if ('addItem' in child.identifier.to_ecma().split('.')):
-						#TODO: exactly what?
+						if debug: print('>>>----> toolbar.addItem:', child.identifier.to_ecma())
+						# TODO: exactly what?
+						# write something to manifest.json
 						yield [{"toolbar": {"scope": scope, "node": child, "text": child.to_ecma(), "aliases": aliases}}]
 				elif (scope == 0) and isinstance(child, ast.FuncDecl):
 					# replace as follows -
