@@ -91,7 +91,7 @@ class Oex2Crx:
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
 		crx = self._crx
-		configStr = str(oex.read("config.xml"), 'UTF-8')
+		configStr = str.encode(oex.read("config.xml"), 'UTF-8')
 		if debug: print(("Config.xml", configStr))
 		root = etree.fromstring(configStr)
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
