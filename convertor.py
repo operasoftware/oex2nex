@@ -165,7 +165,7 @@ class Oex2Crx:
 		if icon is not None:
 			if icon.find("[@src]") is not None:
 				iconfile = icon.attrib["src"]
-		# default_locale should be set in manifest.json *only* if there is a corresponding _locale/foo folder in the input
+		# default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
 		# using dict.get here because it was blowing up on an extension w/o @defaultlocale
 		# this gets around it, but renders the below KeyError condition useless... (as default_local gets set to None)
 		default_locale = root.attrib.get("defaultlocale", None)
@@ -318,7 +318,7 @@ class Oex2Crx:
 		#probably have an if has_toolbar here, or iterative over our AST walker to insert stuff into manifest.json
 		if has_option:
 			manifest += ',\n"options_page" : "options.html"'
-		# default_locale should be set in manifest.json *only* if there is a corresponding _locale/foo folder in the input
+		# default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
 		if default_locale:
 			manifest += ',\n"default_locale" : "'+default_locale+'"'
 		if has_injscrs:
