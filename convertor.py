@@ -106,7 +106,7 @@ class Oex2Crx:
 			"""
 			Serializes permissions list to be appended to manifest.json
 			"""
-			return ", ".join(permissions)
+			return ", ".join('"' + perm + '"' for perm in permissions)
 
 		def _get_best_elem(xmltree, tag):
 			"""
@@ -181,6 +181,7 @@ class Oex2Crx:
 		# parsing includes and excludes from the included scripts
 		includes = []
 		excludes = []
+		# just until we have dynamic permissions, continue with fixed list
 		permissions = ["contextMenus", "webRequest", "webRequestBlocking", "storage", "cookies", "tabs", "http://*/*", "https://*/*"]
 		injscrlist  = []
 		inj_scr_data = ""
@@ -335,7 +336,7 @@ class Oex2Crx:
 			if debug: print(("Loadable resources:", resources))
 			manifest += ',\n"web_accessible_resources" : [' + resources + ']'
 
-		manifest += ',\n"permissions" :' + _get_permissions()
+		manifest += ',\n"permissions" : [' + _get_permissions() + ']'
 		manifest += '\n}\n'
 
 		if debug: print(("Manifest: ", manifest))
@@ -378,7 +379,7 @@ class Oex2Crx:
 		aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
 		scriptdata = jstree.to_ecma()
 		for rval in walker._get_replacements(jstree, aliases):
-			if debug: print(('walker ret:', rval))
+			# if debug: print(('walker ret:', rval))
 			if isinstance(rval, list):
 				rdict = rval[0]
 			elif isinstance(rval, dict):
