@@ -124,18 +124,24 @@ class Oex2Crx:
 			"""
 			elems = root.findall("{http://www.w3.org/ns/widgets}" + tag)
 			rval = ""
+			first = ""
 			# Use some 'en' value of description if the element is localised
 			for it in elems:
 				try:
 					lang = it.attrib['{http://www.w3.org/XML/1998/namespace}lang']
 					if (lang is not None) and ("en" in lang):
 						rval = it.text.encode("utf-8")
+					else:
+						first = it.text.encode("utf-8")
 				except KeyError:
 					if it is not None and isinstance(it.text, str):
 						rval = it.text.encode("utf-8")
 					break
 			if not rval:
-				rval = "No " + tag + " found in config.xml."
+				if first:
+					rval = first
+				else:
+					rval = "No " + tag + " found in config.xml."
 			return rval
 
 		name = _get_best_elem (root, "name")
