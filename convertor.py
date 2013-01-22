@@ -96,6 +96,18 @@ class Oex2Crx:
 		root = etree.fromstring(configStr.encode('UTF-8'))
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
+		def _add_permission(perm):
+			"""
+			Adds a permission to the permission list
+			"""
+			permissions.append(perm)
+				
+		def _get_permissions():
+			"""
+			Serializes permissions list to be appended to manifest.json
+			"""
+			return ", ".join(permissions)
+
 		def _get_best_elem(xmltree, tag):
 			"""
 			Find and return default or English tag's content when config.xml
@@ -154,8 +166,10 @@ class Oex2Crx:
 			if icon.find("[@src]") is not None:
 				iconfile = icon.attrib["src"]
 		# default_locale should be set in manifest.json *only* if there is a corresponding _locale/foo folder in the input
-		default_locale = root.attrib["defaultlocale"]
-		if default_locale :
+		# using dict.get here because it was blowing up on an extension w/o @defaultlocale
+		# this gets around it, but renders the below KeyError condition useless... (as default_local gets set to None)
+		default_locale = root.attrib.get("defaultlocale", None)
+		if default_locale:
 			try:
 				if debug : print( 'found default locale attribute: ' + default_locale )
 				oex.getinfo('_locales/' + default_locale + '/messages.json')
@@ -167,6 +181,7 @@ class Oex2Crx:
 		# parsing includes and excludes from the included scripts
 		includes = []
 		excludes = []
+		permissions = ["contextMenus", "webRequest", "webRequestBlocking", "storage", "cookies", "tabs", "http://*/*", "https://*/*"]
 		injscrlist  = []
 		inj_scr_data = ""
 		inj_scripts  = ""
@@ -320,7 +335,7 @@ class Oex2Crx:
 			if debug: print(("Loadable resources:", resources))
 			manifest += ',\n"web_accessible_resources" : [' + resources + ']'
 
-		manifest += ',\n"permissions" : ["contextMenus", "webRequest", "webRequestBlocking", "storage", "cookies", "tabs", "http://*/*", "https://*/*"]'
+		manifest += ',\n"permissions" :' + _get_permissions()
 		manifest += '\n}\n'
 
 		if debug: print(("Manifest: ", manifest))
