@@ -93,7 +93,7 @@ class Oex2Crx:
 		crx = self._crx
 		configStr = str(oex.read("config.xml"), 'UTF-8')
 		if debug: print(("Config.xml", configStr))
-		root = etree.fromstring(configStr.encode('UTF-8'))
+		root = etree.fromstring(configStr)
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
 		def _add_permission(perm):
