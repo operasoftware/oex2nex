@@ -38,6 +38,8 @@ oex_bg_shim =  shim_dir + "operaextensions_background.js"
 oex_page_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 oex_resource_loader = shim_dir + "popup_resourceloader"
+# just until we have dynamic permissions, continue with fixed list
+permissions = ["contextMenus", "webRequest", "webRequestBlocking", "storage", "cookies", "tabs", "http://*/*", "https://*/*"]
 
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
@@ -86,6 +88,15 @@ class Oex2Crx:
 		self._oex, self._crx = oex, crx
 		if debug: print(('Oex:', oex, ", Crx:", crx))
 
+	def _add_permission(self, perm):
+		""" Adds a permission to the permission list. """
+		if perm is not None:
+			permissions.append(perm)
+
+	def _get_permissions(self):
+		""" Serializes permissions list to be appended to manifest.json """
+		return ", ".join('"' + perm + '"' for perm in permissions)
+
 	def _convert(self):
 		"""
 		Reads the oex file, parses its config.xml, includes/, does the
@@ -107,18 +118,6 @@ class Oex2Crx:
 		if debug: print(("Config.xml", configStr))
 		root = etree.fromstring(configStr)
 		#TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
-
-		def _add_permission(perm):
-			"""
-			Adds a permission to the permission list
-			"""
-			permissions.append(perm)
-
-		def _get_permissions():
-			"""
-			Serializes permissions list to be appended to manifest.json
-			"""
-			return ", ".join('"' + perm + '"' for perm in permissions)
 
 		def _get_best_elem(xmltree, tag):
 			"""
@@ -197,8 +196,6 @@ class Oex2Crx:
 		# parsing includes and excludes from the included scripts
 		includes = []
 		excludes = []
-		# just until we have dynamic permissions, continue with fixed list
-		permissions = ["contextMenus", "webRequest", "webRequestBlocking", "storage", "cookies", "tabs", "http://*/*", "https://*/*"]
 		injscrlist  = []
 		inj_scr_data = ""
 		inj_scripts  = ""
@@ -356,7 +353,7 @@ class Oex2Crx:
 			if debug: print(("Loadable resources:", resources))
 			manifest += ',\n"web_accessible_resources" : [' + resources + ']'
 
-		manifest += ',\n"permissions" : [' + _get_permissions() + ']'
+		manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
 		manifest += '\n}\n'
 
 		if debug: print(("Manifest: ", manifest))
@@ -410,7 +407,23 @@ class Oex2Crx:
 			except Exception as e:
 				pass
 
+		# defining this in here so we can share the jstree and walker instances
+		def find_permissions(tree):
+			""" Looks for possible permissions to be added to manifest.json """
+			self._add_permission(walker.find_apicall(jstree, 'addItem', 'contextMenus'))
+			self._add_permission(walker.find_apicall(jstree, 'create', 'tabs'))
+			self._add_permission(walker.find_apicall(jstree, 'getAll', 'tabs'))
+			self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
+			self._add_permission(walker.find_apicall(jstree, 'getSelected', 'tabs'))
+			self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
+			# intelligent way to add webRequest or webRequestBlocking, or just put both in?
+			# if both, _add_permission needs to be able to handle lists or tuples
+			self._add_permission(walker.find_apicall(jstree, 'add', 'webRequest'))
+			self._add_permission(walker.find_apicall(jstree, 'remove', 'webRequest'))
 
+		# commenting out until it can detect the non-"shortcut" API calls too
+		# don't want to break any conversions until it's more robust
+		# find_permissions(jstree)
 		return scriptdata
 
 	def convert(self):
