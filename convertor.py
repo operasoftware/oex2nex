@@ -1,5 +1,9 @@
 #!python
-import os, sys, re, zipfile
+import os
+import sys
+import re
+import zipfile
+import codecs
 import xml.etree.ElementTree as etree
 try:
 	import html5lib
@@ -88,7 +92,6 @@ class Oex2Crx:
 		necessary conversion to prepare the manifest.json of the crx file, add
 		wrappers and shims to make the crx work and writes the crx package.
 		"""
-		import codecs
 
 		# parse config.xml to generate the suitable manifest entries
 		oex = self._oex
@@ -208,7 +211,11 @@ class Oex2Crx:
 		merge_scripts = False
 		for it in oex.infolist():
 			if debug: print((it.filename))
-			data = oex.read(it.filename)
+			file_data = oex.read(it.filename)
+			# If this data has a UTF-8 BOM, remove it
+			# Data is nicer without it (Probably we want to be picky here)
+			if file_data[:3] == codecs.BOM_UTF8:
+				file_data = file_data[3:]
 			# for the background process file (most likely index.html)
 			# we need to parse config.xml to get the correct index.html file
 			# then there can be many index files scattered across the locales folders
@@ -218,15 +225,15 @@ class Oex2Crx:
 				# file and wrapped in an opera.isReady() function. Also this new
 				# file needs to be put in the indexdoc as a script and others
 				# removed
-				data = shim_wrap(data, "index", oex, crx)
+				file_data = shim_wrap(file_data, "index", oex, crx)
 			elif it.filename == popupdoc:
 				# same as with indexdoc
 				has_popup = True
-				data = shim_wrap(data, "popup", oex, crx)
+				file_data = shim_wrap(file_data, "popup", oex, crx)
 			elif it.filename == optionsdoc:
 				# same as with indexdoc
 				has_option = True
-				data = shim_wrap(data, "option", oex, crx)
+				file_data = shim_wrap(file_data, "option", oex, crx)
 			elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
 				has_injscrs = True
 				f_includes = []
@@ -238,9 +245,9 @@ class Oex2Crx:
 				if merge_scripts:
 					inj_scr_data += str.encode(oex.read(it.filename), "utf-8")
 				if debug: print(('Included script:', it.filename))
-				pos = data.find("==/UserScript==")
+				pos = file_data.find("==/UserScript==")
 				if pos != -1:
-					ijsProlog = data[:pos]
+					ijsProlog = file_data[:pos]
 					if debug: print(("user script prolog: " , ijsProlog))
 					lines = ijsProlog.split("\n")
 					for line in lines:
@@ -264,11 +271,11 @@ class Oex2Crx:
 
 				# data = str.encode(data, 'utf-8')
 				if debug: print(('Fixing variables in ', it.filename))
-				data = self._update_scopes(data)
+				file_data = self._update_scopes(file_data)
 				# wrap all scripts inside opera.isReady()
 				if debug: print(('Wrap scripts in opera.isReady()', it.filename))
 				# Important: ONLY ASCII in these strings, please..
-				data = "opera.isReady(function ()\n{\n" + data + "\n});\n"
+				file_data = "opera.isReady(function ()\n{\n" + file_data + "\n});\n"
 			elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
 				resources += ('"' + it.filename + '",')
 
@@ -279,9 +286,9 @@ class Oex2Crx:
 			# did not touch. So just bundle all the files.
 			if ((not it.filename == "config.xml")): #and (not it.filename.endswith(".js"))):
 				try:
-					crx.writestr(it.filename, data)
+					crx.writestr(it.filename, file_data)
 				except UnicodeEncodeError:
-					crx.writestr(it.filename, data.encode("utf-8"))
+					crx.writestr(it.filename, file_data.encode("utf-8"))
 
 		if has_injscrs:
 			if debug: print('Has injected scripts')
@@ -374,11 +381,10 @@ class Oex2Crx:
  if(s !== "") { document.querySelector('iframe').src = window.atob(s); }
  if(w !== "") { document.body.style.minWidth = w.replace(/\D/g,'') + "px"; }
  if(h !== "") { document.body.style.minHeight = h.replace(/\D/g,'') + "px"; }""")
+
 	def _update_scopes(self, scriptdata):
 		""" Attempt to parse the script text and do some variable scoping fixes
 		so that the scripts used in the oex work with the shim """
-		# If script data has a BOM, remove it
-		scriptdata = re.sub( r'^\xef\xbb\xbf', '', scriptdata  )
 		try:
 			jstree = JSParser().parse(scriptdata)
 		except:
