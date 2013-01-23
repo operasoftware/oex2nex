@@ -130,10 +130,12 @@ class Oex2Crx:
 				try:
 					lang = it.attrib['{http://www.w3.org/XML/1998/namespace}lang']
 					if not rval or ((lang is not None) and ("en" in lang)):
-						rval = it.text
+						rval = it.text.encode("utf-8")
 				except KeyError:
 					if it is not None and isinstance(it.text, basestring):
 						rval = it.text
+						if isinstance(rval, unicode):
+							rval = rval.encode("utf-8")
 					break
 			if not rval:
 				rval = "No " + tag + " found in config.xml."
