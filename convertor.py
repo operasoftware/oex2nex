@@ -393,7 +393,7 @@ class Oex2Crx:
 		scriptdata = jstree.to_ecma()
 		for rval in walker._get_replacements(jstree, aliases):
 			# if debug: print(('walker ret:', rval))
-			if isinstance(rval, list):
+			if isinstance(rval, list) and rval != []:
 				rdict = rval[0]
 			elif isinstance(rval, dict):
 				rdict = rval
@@ -453,7 +453,7 @@ class Oex2Crx:
 						print(("The file " + script_name + " was not found in archive."))
 				else: # could be an inline script
 					# but popups could not use inline scripts in crx packages
-					if (script.childNodes[0]):
+					if (script.childNodes != []):
 						inlinescrdata  = ""
 						for cnode in script.childNodes:
 							inlinescrdata += cnode.nodeValue
@@ -465,7 +465,7 @@ class Oex2Crx:
 			for script in doc.getElementsByTagName("script"):
 				script_name = script.getAttribute("src")
 				if not script_name:
-					if (script.childNodes[0]):
+					if (script.childNodes != []):
 						script_data = ""
 						for cnode in script.childNodes:
 							script_data += cnode.nodeValue
@@ -527,7 +527,7 @@ class Oex2Crx:
 
 		# add scripts as necessary
 		head = doc.getElementsByTagName("head")
-		if head is not None:
+		if head is not None and head != []:
 			head = head[0]
 			head.insertBefore(shim, head.firstChild)
 			if merge_scripts:
