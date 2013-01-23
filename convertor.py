@@ -124,7 +124,7 @@ class Oex2Crx:
 			"""
 			elems = root.findall("{http://www.w3.org/ns/widgets}" + tag)
 			rval = ""
-			# Use some 'en' value of description if the element is localised
+			# Use some 'en' value of the text content if the element is localised
 			for it in elems:
 				try:
 					lang = it.attrib['{http://www.w3.org/XML/1998/namespace}lang']
@@ -454,17 +454,23 @@ class Oex2Crx:
 				else: # could be an inline script
 					# but popups could not use inline scripts in crx packages
 					if (script.childNodes[0]):
-						scriptdata += script.childNodes[0].nodeValue
+						inlinescrdata  = ""
+						for cnode in script.childNodes:
+							inlinescrdata += cnode.nodeValue
+						inlinescrdata += script.childNodes[0].nodeValue
 				script.parentNode.removeChild(script)
 		else:
 			# move inline scripts into a new external script
-			inlinescrdata = ""
 			script_count = 0
 			for script in doc.getElementsByTagName("script"):
 				script_name = script.getAttribute("src")
 				if not script_name:
 					if (script.childNodes[0]):
-						script_data = script.childNodes[0].nodeValue.strip()
+						script_data = ""
+						for cnode in script.childNodes:
+							script_data += cnode.nodeValue
+						script_data = script_data.strip()
+						#script_data = script.childNodes[0].nodeValue.strip()
 						if script_data:
 							script_count += 1
 							iscr = doc.createElement("script")
