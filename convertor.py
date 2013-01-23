@@ -470,8 +470,8 @@ class Oex2Crx:
 						for cnode in script.childNodes:
 							script_data += cnode.nodeValue
 						script_data = script_data.strip()
-						#script_data = script.childNodes[0].nodeValue.strip()
 						if script_data:
+							script_data = "opera.isReady(function ()\n{\n" + script_data + "\n});\n"
 							script_count += 1
 							iscr = doc.createElement("script")
 							iscr_src = "inline_script_" + type + "_" + str(script_count) + ".js"
