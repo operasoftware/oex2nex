@@ -62,8 +62,8 @@ class TestMultiAlias(unittest.TestCase):
         var o = opera;
         c = o.contexts,
         t = c.toolbar;
-        button = c.createItem(props);
-        c.addItem(button);
+        button = t.createItem(props);
+        t.addItem(button);
         """
         self.jstree = JSParser().parse(script)
 
