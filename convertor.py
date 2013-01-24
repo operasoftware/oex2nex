@@ -423,7 +423,7 @@ class Oex2Crx:
                 rdict = []
             try:
                 for key in rdict:
-                    if rdict[key]['text'] and rdict[key]['textnew']:
+                    if 'text' in rdict[key] and 'textnew' in rdict[key]:
                         scriptdata = scriptdata.replace(rdict[key]['text'], rdict[key]['textnew'])
             except Exception as e:
                 print ("Exception while fixing script:", e)
