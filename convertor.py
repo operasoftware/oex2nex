@@ -7,6 +7,8 @@ import re
 import zipfile
 import codecs
 import xml.etree.ElementTree as etree
+import logging
+import codecs
 try:
     import html5lib
 except ImportError:
@@ -116,20 +118,12 @@ class Oex2Crx:
         crx = self._crx
         try:
             # Also a quick sanity check for Opera extension format
-            configStr = oex.read("config.xml")
+            configStr = unicoder(oex.read("config.xml"))
         except KeyError as kex:
             sys.exit ("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
 
-        #Handle UTF-8 BOM here; do we care about other encodings?
-        if configStr[:3] == codecs.BOM_UTF8 :
-            configStr = configStr[3:]
-        try:
-            configStr = configStr.encode('UTF-8')
-        except UnicodeDecodeError as e:
-            print ("Encoding error:", e)
-            pass
         if debug: print(("Config.xml", configStr))
-        root = etree.fromstring(configStr)
+        root = etree.fromstring(configStr.encode('UTF-8')) # xml.etree requires UTF-8 input
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
         def _get_best_elem(xmltree, tag):
@@ -151,8 +145,8 @@ class Oex2Crx:
                     break
             if not rval:
                 rval = "No " + tag + " found in config.xml."
-            elif isinstance(rval, unicode):
-                rval = rval.encode("utf-8")
+            elif not isinstance(rval, unicode):
+                rval = unicoder( rval ) #.encode("utf-8")
 
             return rval
 
@@ -227,11 +221,7 @@ class Oex2Crx:
         merge_scripts = False
         for it in oex.infolist():
             if debug: print((it.filename))
-            file_data = oex.read(it.filename)
-            # If this data has a UTF-8 BOM, remove it
-            # Data is nicer without it (Probably we want to be picky here)
-            if file_data[:3] == codecs.BOM_UTF8:
-                file_data = file_data[3:]
+            file_data = unicoder( oex.read(it.filename) )
             # for the background process file (most likely index.html)
             # we need to parse config.xml to get the correct index.html file
             # then there can be many index files scattered across the locales folders
@@ -259,7 +249,7 @@ class Oex2Crx:
                     inj_scripts += ('"' + it.filename + '",')
                 # store the script file name to add it to manifest's content_scripts section
                 if merge_scripts:
-                    inj_scr_data += str.encode(oex.read(it.filename), "utf-8")
+                    inj_scr_data += unicoder(oex.read(it.filename))
                 if debug: print(('Included script:', it.filename))
                 pos = file_data.find("==/UserScript==")
                 if pos != -1:
@@ -409,7 +399,7 @@ class Oex2Crx:
             except:
                 print("ERROR: script parsing failed. Some scripts might need manual fixing.")
                 return scriptdata
-
+        
         walker = ASTWalker(debug)
         aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
         scriptdata = jstree.to_ecma()
@@ -423,10 +413,10 @@ class Oex2Crx:
                 rdict = []
             try:
                 for key in rdict:
-                    if rdict[key]['text'] and rdict[key]['textnew']:
+                    if 'text' in rdict[key] and 'textnew' in rdict[key]:
                         scriptdata = scriptdata.replace(rdict[key]['text'], rdict[key]['textnew'])
             except Exception as e:
-                print ("Exception while fixing script:", e)
+                print ("Exception while fixing script:", e, key, scriptdata)
                 pass
 
         # defining this in here so we can share the jstree and walker instances
@@ -585,7 +575,7 @@ class Oex2Crx:
         # scripts are read and written here only if they are merged
         # if not, they are varscopefixed and added in the routine where other files are added.
         if merge_scripts:
-            scriptdata = self._update_scopes(scriptdata.encode("utf-8","backslashreplace"))
+            scriptdata = self._update_scopes(unicoder(scriptdata))
             scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
             crx.writestr(oscr, scriptdata)
         return serializer.render(domwalker(doc))
@@ -700,6 +690,38 @@ def fetch_shims():
             else:
                 print(('Threw :', ex , ' when fetching ', url))
 
+class UnicodingError: pass
+
+utf8_detector = re.compile(r"""^(?:
+     [\x09\x0A\x0D\x20-\x7E]            # ASCII
+   | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
+   |  \xE0[\xA0-\xBF][\x80-\xBF]        # excluding overlongs
+   | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte
+   |  \xED[\x80-\x9F][\x80-\xBF]        # excluding surrogates
+   |  \xF0[\x90-\xBF][\x80-\xBF]{2}     # planes 1-3
+   | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
+   |  \xF4[\x80-\x8F][\x80-\xBF]{2}     # plane 16
+  )*$""", re.X)
+
+cp1252_detector = re.compile(r'^(?:[\x80-\xBF])*$', re.X)
+xa4_detector = re.compile(r'^(?:\xA4)*$', re.X)
+
+def unicoder(string):
+    '''make unicode'''
+    try:
+        if re.match(utf8_detector, string):
+            if string[:3] == codecs.BOM_UTF8 : # remove any BOM from UTF-8 data
+                string= string[3:]
+            return unicode(string, 'utf_8')
+        if re.match(cp1252_detector, string):
+            if re.match(xa4_detector, string):
+                return unicode(string, 'iso8859_15')
+            else:
+                return unicode(string, 'cp1252')
+        return unicode(string, 'latin_1')
+        
+    except UnicodingError:
+        raise UnicodingError("still don't recognise encoding after trying do guess common english encodings")
 
 def main(args = None):
     import argparse
