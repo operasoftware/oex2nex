@@ -90,19 +90,19 @@ class Oex2Crx:
         self._oex, self._crx = oex, crx
         if debug: print(('Oex:', oex, ", Crx:", crx))
 
-	def _add_permission(self, perm):
-		""" Adds a permission to the permission list. """
-		if perm is not None:
-			permissions.append(perm)
+    def _add_permission(self, perm):
+        """ Adds a permission to the permission list. """
+        if perm is not None:
+            permissions.append(perm)
 
-	def _get_permissions(self):
-		""" Serializes permissions list to be appended to manifest.json """
-		# "uniquify" permissions (as multiple perms may get in)
-		def uniquify(lst):
-			st = set(lst)
-			return list(st)
+    def _get_permissions(self):
+        """ Serializes permissions list to be appended to manifest.json """
+        # "uniquify" permissions (as multiple perms may get in)
+        def uniquify(lst):
+            st = set(lst)
+            return list(st)
 
-		return ", ".join('"' + perm + '"' for perm in uniquify(permissions))
+        return ", ".join('"' + perm + '"' for perm in uniquify(permissions))
 
     def _convert(self):
         """
@@ -429,23 +429,23 @@ class Oex2Crx:
                 print ("Exception while fixing script:", e)
                 pass
 
-		# defining this in here so we can share the jstree and walker instances
-		def find_permissions(tree):
-			""" Looks for possible permissions to be added to manifest.json """
-			self._add_permission(walker.find_apicall(jstree, 'addItem', 'contextMenus'))
-			self._add_permission(walker.find_apicall(jstree, 'create', 'tabs'))
-			self._add_permission(walker.find_apicall(jstree, 'getAll', 'tabs'))
-			self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
-			self._add_permission(walker.find_apicall(jstree, 'getSelected', 'tabs'))
-			self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
-			# intelligent way to add webRequest or webRequestBlocking, or just put both in?
-			# if both, _add_permission needs to be able to handle lists or tuples
-			self._add_permission(walker.find_apicall(jstree, 'add', 'webRequest'))
-			self._add_permission(walker.find_apicall(jstree, 'remove', 'webRequest'))
+        # defining this in here so we can share the jstree and walker instances
+        def find_permissions(tree):
+            """ Looks for possible permissions to be added to manifest.json """
+            self._add_permission(walker.find_apicall(jstree, 'addItem', 'contextMenus'))
+            self._add_permission(walker.find_apicall(jstree, 'create', 'tabs'))
+            self._add_permission(walker.find_apicall(jstree, 'getAll', 'tabs'))
+            self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
+            self._add_permission(walker.find_apicall(jstree, 'getSelected', 'tabs'))
+            self._add_permission(walker.find_apicall(jstree, 'getFocused', 'tabs'))
+            # intelligent way to add webRequest or webRequestBlocking, or just put both in?
+            # if both, _add_permission needs to be able to handle lists or tuples
+            self._add_permission(walker.find_apicall(jstree, 'add', 'webRequest'))
+            self._add_permission(walker.find_apicall(jstree, 'remove', 'webRequest'))
 
-		# commenting out until it can detect the non-"shortcut" API calls too
-		# don't want to break any conversions until it's more robust
-		# find_permissions(jstree)
+        # commenting out until it can detect the non-"shortcut" API calls too
+        # don't want to break any conversions until it's more robust
+        # find_permissions(jstree)
 
         return scriptdata
 
