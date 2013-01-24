@@ -1042,7 +1042,7 @@ var ToolbarContext = function( isBackground ) {
           
         } else {
           
-          var toolbarItemProps = this[0].properties;
+          var toolbarItemProps = Object.create( this[0].properties );
           toolbarItemProps.badge = toolbarItemProps.badge.properties;
           toolbarItemProps.popup = toolbarItemProps.popup.properties;
 
@@ -1214,24 +1214,28 @@ var ToolbarPopup = function( properties ) {
 
 	OPromise.call( this );
 
-	this.properties = {};
-
-	// Set provided properties through object prototype setter functions
-	this.properties.href = properties.href || "";
-	this.properties.width = properties.width || 300;
-	this.properties.height = properties.height || 200;
+	this.properties = {
+	  href: "",
+	  width: 300,
+	  height: 300
+	};
 	
-	// internal property
+	// internal properties
 	this.isExternalHref = false;
+	
+	this.href = properties.href;
+	this.width = properties.width;
+	this.height = properties.height;
 	
 	this.applyHrefVal = function() {
 		// If href points to a http or https resource we need to load it via an iframe
 		if(this.isExternalHref === true) {
 			return "/oex_shim/popup_resourceloader.html?href=" + global.btoa(this.properties.href) +
-								"&w=" + this.properties.width + "&h=" + this.properties.height;
+              "&w=" + this.properties.width + "&h=" + this.properties.height;
 		}
 		
-		return this.properties.href;
+		return this.properties.href + (this.properties.href.indexOf('?') > 0 ? '&' : '?' ) + 
+		        "w=" + this.properties.width + "&h=" + this.properties.height;
 	};
 
 };
@@ -1239,8 +1243,16 @@ var ToolbarPopup = function( properties ) {
 ToolbarPopup.prototype = Object.create( OPromise.prototype );
 
 ToolbarPopup.prototype.apply = function() {
+  
+  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
 
-	chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
+	  chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
+	
+  } else {
+    
+    chrome.browserAction.setPopup({ "popup": "" });
+    
+  }
 
 };
 
@@ -1254,7 +1266,7 @@ ToolbarPopup.prototype.__defineSetter__("href", function( val ) {
 	val = val + ""; // force to type string
 	
 	// Check if we have an external href path
-	if(val.match(/^https?:\/\//)) {
+	if(val.match(/^(https?:\/\/|data:)/)) {
 		this.isExternalHref = true;
 	} else {
 		this.isExternalHref = false;
@@ -1262,13 +1274,21 @@ ToolbarPopup.prototype.__defineSetter__("href", function( val ) {
 	
 	this.properties.href = val;
 
-	Queue.enqueue(this, function(done) {
+  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
 
-		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
+  	Queue.enqueue(this, function(done) {
 
-		done();
+  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
 
-	}.bind(this));
+  		done();
+
+  	}.bind(this));
+	
+  } else {
+
+    chrome.browserAction.setPopup({ "popup": "" });
+
+  }
 });
 
 ToolbarPopup.prototype.__defineGetter__("width", function() {
@@ -1281,16 +1301,24 @@ ToolbarPopup.prototype.__defineSetter__("width", function( val ) {
 	if(val == '') {
 		this.properties.width = 300; // default width
 	} else {
-		this.properties.width = val; 
+		this.properties.width = val < 800 ? val : 800; // enforce max width
 	}
 	
-	Queue.enqueue(this, function(done) {
+  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
 
-		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
+  	Queue.enqueue(this, function(done) {
 
-		done();
+  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
 
-	}.bind(this));
+  		done();
+
+  	}.bind(this));
+	
+  } else {
+
+    chrome.browserAction.setPopup({ "popup": "" });
+
+  }
 });
 
 ToolbarPopup.prototype.__defineGetter__("height", function() {
@@ -1301,18 +1329,26 @@ ToolbarPopup.prototype.__defineSetter__("height", function( val ) {
 	val = (val + "").replace(/\D/g, '');
 	
 	if(val == '') {
-		this.properties.height = 200; // default height
+		this.properties.height = 300; // default height
 	} else {
-		this.properties.height = val; 
+	  this.properties.height = val < 600 ? val : 600; // enforce max height
 	}
 	
-	Queue.enqueue(this, function(done) {
+	if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
 
-		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
+  	Queue.enqueue(this, function(done) {
 
-		done();
+  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
 
-	}.bind(this));
+  		done();
+
+  	}.bind(this));
+	
+  } else {
+
+    chrome.browserAction.setPopup({ "popup": "" });
+
+  }
 });
 
 var ToolbarUIItem = function( properties ) {
@@ -1327,6 +1363,7 @@ var ToolbarUIItem = function( properties ) {
   this.properties.popup = new ToolbarPopup( properties.popup || {} );
   this.properties.badge = new ToolbarBadge( properties.badge || {} );
   if(properties.onclick){this.onclick = properties.onclick;}
+  if(properties.onremove){this.onremove = properties.onremove;}
 
 };
 
@@ -1694,3 +1731,27 @@ if(manifest && manifest.browser_action !== undefined && manifest.browser_action 
   global.opera = opera;
 
 })( window );
+// Set the width and height of the popup window to values provided in the URL query string
+opera.isReady(function() {
+
+  function getParam( key ) {
+    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regexS = "[\\?&]" + key + "=([^&#]*)";
+    var regex = new RegExp(regexS);
+    var results = regex.exec(window.location.search);
+    return results == null ? "" : window.decodeURIComponent(results[1].replace(/\+/g, " "));
+  }
+
+  var w = getParam('w'), h = getParam('h');
+  if(w !== "") {
+    document.body.style.minWidth = w.replace(/\D/g,'') + "px";
+  } else {
+    document.body.style.minWidth = "300px"; // default width
+  }
+  if(h !== "") {
+    document.body.style.minHeight = h.replace(/\D/g,'') + "px";
+  } else {
+    document.body.style.minHeight = "300px"; // default height
+  }
+
+});
