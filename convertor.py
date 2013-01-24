@@ -37,7 +37,7 @@ shim_dir = "oex_shim/"
 #"http://addons.opera.com/tools/oex_shim/"
 shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
 oex_bg_shim =  shim_dir + "operaextensions_background.js"
-oex_page_shim = shim_dir + "operaextensions_popup.js"
+oex_anypage_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 oex_resource_loader = shim_dir + "popup_resourceloader"
 # just until we have dynamic permissions, continue with fixed list
@@ -226,7 +226,7 @@ class Oex2Crx:
         resources = ""
         merge_scripts = False
         for it in oex.infolist():
-            if debug: print((it.filename))
+            if debug: print("Handling file: %s" % it.filename)
             file_data = oex.read(it.filename)
             # If this data has a UTF-8 BOM, remove it
             # Data is nicer without it (Probably we want to be picky here)
@@ -247,7 +247,6 @@ class Oex2Crx:
                 has_popup = True
                 file_data = shim_wrap(file_data, "popup", oex, crx)
             elif it.filename == optionsdoc:
-                # same as with indexdoc
                 has_option = True
                 file_data = shim_wrap(file_data, "option", oex, crx)
             elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
@@ -292,15 +291,15 @@ class Oex2Crx:
                 if debug: print(('Wrap scripts in opera.isReady()', it.filename))
                 # Important: ONLY ASCII in these strings, please..
                 file_data = "opera.isReady(function ()\n{\n" + file_data + "\n});\n"
-            elif it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
+            elif re.search(r'\.x?html?$', it.filename, flags=re.I):
+                if debug: print("Adding shim for any page to file %s." % it.filename)
+                file_data = shim_wrap(file_data, "", oex, crx)
+
+            # Web accessible resources list
+            if it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
                 resources += ('"' + it.filename + '",')
 
-            # Do not add config.xml or .js files to the crx package.
-            # All needed .js files referenced by index/popup/etc. are merged
-            # and that merged file is added
-            # BUT: the js files could be referenced by a different file that we
-            # did not touch. So just bundle all the files.
-            if ((not it.filename == "config.xml")): #and (not it.filename.endswith(".js"))):
+            if ((not it.filename == "config.xml")):
                 try:
                     crx.writestr(it.filename, file_data)
                 except UnicodeEncodeError:
@@ -539,19 +538,20 @@ class Oex2Crx:
                 crx.getinfo(oex_bg_shim)
             except KeyError:
                 crx.writestr(oex_bg_shim, bgdata)
-        elif file_type == "popup" or file_type == "option":
+        else: # add the 'anypage.shim' to all content we receive here:
+            #NOT : file_type == "popup" or file_type == "option":
             # Hopefully there would be only one popup.html or options.html in
             # the package (Localisation ~!~!~!~)
             if merge_scripts:
                 oscr = "allscripts_" + file_type + ".js"
 
-            shim.setAttribute("src", oex_page_shim)
-            ppdata = self._get_shim_data(oex_page_shim)
+            shim.setAttribute("src", oex_anypage_shim)
+            ppdata = self._get_shim_data(oex_anypage_shim)
             # add popup shim only if it hasn't been added already
             try:
-                crx.getinfo(oex_page_shim)
+                crx.getinfo(oex_anypage_shim)
             except KeyError:
-                crx.writestr(oex_page_shim, ppdata)
+                crx.writestr(oex_anypage_shim, ppdata)
 
         if merge_scripts:
             allscr = doc.createElement("script")
