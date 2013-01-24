@@ -149,16 +149,14 @@ class ASTWalker(NodeVisitor):
             """
             # var is either a variable declaration or an assignment (which could be
             # an implicit global declaration)
-            # do we need to go up the object chain until (window.)opera?
+            #TODO: worth following object chain up to window.opera?
             var = node.to_ecma()
             var_list = var.split(',')
             for var in var_list:
                 if lh_object in var:
-                    # do something useful here, (set found to True)
-                    if debug: print('BINGO-ish', node.to_ecma())
+                    if debug: print('Aliased API call found (maybe)', node.to_ecma())
+                    return True
 
-        #TODO: write a million tests
-        #TODO: figure out how high up we have to go, window? opera?
         try:
             for child in self.visit(node):
                 if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
@@ -174,11 +172,15 @@ class ASTWalker(NodeVisitor):
                             #is this crazy?
                             for child in self.visit(node):
                                 if isinstance(child, ast.VarStatement):
-                                    lhs_finder(child, lh_object)
+                                    found = lhs_finder(child, lh_object)
 
                                 elif isinstance(child, ast.Assign):
-                                    lhs_finder(child, lh_object)
+                                    found = lhs_finder(child, lh_object)
+                                    
+                                elif isinstance(child, ast.ExprStatement):
+                                    found = lhs_finder(child, lh_object)
+
                 if found:
                     return found
         except Exception as e:
-            print('ERROR: Exception thrown in api call finder.', e)
+            print('ERROR: Exception thrown in api call finder.', e, child.to_ecma())
