@@ -95,7 +95,12 @@ class Oex2Crx:
 
 	def _get_permissions(self):
 		""" Serializes permissions list to be appended to manifest.json """
-		return ", ".join('"' + perm + '"' for perm in permissions)
+		# "uniquify" permissions (as multiple perms may get in)
+		def uniquify(lst):
+			st = set(lst)
+			return list(st)
+
+		return ", ".join('"' + perm + '"' for perm in uniquify(permissions))
 
 	def _convert(self):
 		"""
