@@ -112,8 +112,6 @@ class ASTWalker(NodeVisitor):
                     fe = child.to_ecma()
                     # Replace only the first (else risk removing function identifiers inside the main function)
                     fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
-                    if child.identifier.value == "initNavigation":
-                        print 'ec after:', fef
                     fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
                     yield [{"function": {"scope": scope, "node": child, "text": fe, "textnew": fef}}]
                 # Descend
