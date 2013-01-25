@@ -226,13 +226,14 @@ class Oex2Crx:
         has_injscrs = False
         resources = ""
         merge_scripts = False
-        for it in oex.infolist():
+        zf_members = oex.namelist()
+        for filename in zf_members:
             # dropping the _locales content
-            if it.filename.startswith("_locales/"):
+            if filename.startswith("_locales/"):
                 continue
-            if debug: print("Handling file: %s" % it.filename)
-            file_data = oex.read(it.filename)
-            self._zih_file = it.filename
+            if debug: print("Handling file: %s" % filename)
+            file_data = oex.read(filename)
+            self._zih_file = filename
             # If this data has a UTF-8 BOM, remove it
             # Data is nicer without it (Probably we want to be picky here)
             if file_data[:3] == codecs.BOM_UTF8:
@@ -241,30 +242,30 @@ class Oex2Crx:
             # we need to parse config.xml to get the correct index.html file
             # then there can be many index files scattered across the locales folders
             # note that this also need to take care of localisation, which it doesn't now
-            if it.filename == indexfile:
+            if filename == indexfile:
                 # all scripts in indexdoc need to be combined into a single .js
                 # file and wrapped in an opera.isReady() function. Also this new
                 # file needs to be put in the indexdoc as a script and others
                 # removed
                 file_data = shim_wrap(file_data, "index", oex, crx)
-            elif it.filename == popupdoc:
+            elif filename == popupdoc:
                 # same as with indexdoc
                 has_popup = True
                 file_data = shim_wrap(file_data, "popup", oex, crx)
-            elif it.filename == optionsdoc:
+            elif filename == optionsdoc:
                 has_option = True
                 file_data = shim_wrap(file_data, "option", oex, crx)
-            elif it.filename.find("includes/") == 0 and it.filename.endswith(".js"):
+            elif filename.find("includes/") == 0 and filename.endswith(".js"):
                 has_injscrs = True
                 f_includes = []
                 f_excludes = []
                 # add individual file names to the content_scripts value
                 if not merge_scripts:
-                    inj_scripts += ('"' + it.filename + '",')
+                    inj_scripts += ('"' + filename + '",')
                 # store the script file name to add it to manifest's content_scripts section
                 if merge_scripts:
-                    inj_scr_data += str.encode(oex.read(it.filename), "utf-8")
-                if debug: print(('Included script:', it.filename))
+                    inj_scr_data += str.encode(oex.read(filename), "utf-8")
+                if debug: print(('Included script:', filename))
                 pos = file_data.find("==/UserScript==")
                 if pos != -1:
                     ijsProlog = file_data[:pos]
@@ -282,34 +283,48 @@ class Oex2Crx:
                     if debug: print(("Includes: " , includes, " Excludes: ", excludes))
                 if not len(f_includes):
                     f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
-                injscrlist.append({"file": it.filename, "includes" : f_includes, "excludes": f_excludes})
-            elif not merge_scripts and it.filename.endswith(".js"):
+                injscrlist.append({"file": filename, "includes" : f_includes, "excludes": f_excludes})
+            elif not merge_scripts and filename.endswith(".js"):
                 # do we actually *need* to make sure it's a Unicode string and not a set of
                 # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
                 # ASCII characters, Python doesn't actually care if data is originally
                 # UTF-8 or ASCII
 
                 # data = str.encode(data, 'utf-8')
-                if debug: print(('Fixing variables in ', it.filename))
+                if debug: print(('Fixing variables in ', filename))
                 rv_scopefix = self._update_scopes(file_data)
                 # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
                 # If script parsing failed, leave it alone
                 if isinstance(rv_scopefix, basestring):
                     file_data = "opera.isReady(function ()\n{\n" + rv_scopefix + "\n});\n"
-            elif re.search(r'\.x?html?$', it.filename, flags=re.I):
-                if debug: print("Adding shim for any page to file %s." % it.filename)
+            elif re.search(r'\.x?html?$', filename, flags=re.I):
+                if debug: print("Adding shim for any page to file %s." % filename)
                 file_data = shim_wrap(file_data, "", oex, crx)
 
             # Web accessible resources list
-            if it.filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
-                resources += ('"' + it.filename + '",')
+            if filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
+                resources += ('"' + filename + '",')
 
-            if ((not it.filename == "config.xml")):
+            if ((not filename == "config.xml")):
+                # Copy files from locales/en/ to root of the .crx package
+                do_copy = False
+                noloc_filename = None
+                if filename.startswith("locales/en"):
+                    noloc_filename = re.sub(r'^locales/en[a-zA-Z-]{0,2}/', '', filename, count=1)
+                    if noloc_filename != filename and not (noloc_filename in zf_members):
+                        do_copy = True
+
+                if noloc_filename and do_copy:
+                    if debug: print("Copying a localised file : %s to the root of package as : %s" % (filename, noloc_filename))
                 try:
-                    crx.writestr(it.filename, file_data)
+                    crx.writestr(filename, file_data)
+                    if noloc_filename and do_copy:
+                        crx.writestr(noloc_filename, file_data)
                 except UnicodeEncodeError:
-                    crx.writestr(it.filename, file_data.encode("utf-8"))
+                    crx.writestr(filename, file_data.encode("utf-8"))
+                    if noloc_filename and do_copy:
+                        crx.writestr(noloc_filename, file_data.encode("utf-8"))
 
         if has_injscrs:
             if debug: print('Has injected scripts')
