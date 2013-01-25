@@ -125,17 +125,27 @@ class ASTWalker(NodeVisitor):
         except Exception as e:
             print('ERROR: Threw exception in script fixer. The scripts in the crx package might not work correctly.', e)
 
-    def find_apicall(self, node, apicall, permission):
+    def find_apicall(self, node, *apicalls):
         """
         Traverses JS source and looks for hints about what APIs are being used.
-        If it finds something, it returns the "permission" argument (to be used with)
-        _add_permission. Calls _find, which will return None if nothing is found.
+        Returns the associated permission (to be used by _add_permission) if
+        found. Calls _find, which will return None if nothing is found.
         """
         debug = self._debug
-        if self._find(node, apicall):
-            return permission
-        elif debug:
-            print('No match for ' + apicall + 'found')
+        permission = {
+            'addItem': 'contextMenus',
+            'create': 'tabs',
+            'getAll': 'tabs',
+            'getFocused': 'tabs',
+            'getSelected': 'tabs',
+            'add': ('webRequest', 'webRequestBlocking'),
+            'remove': ('webRequest', 'webRequestBlocking')}
+        
+        for call in apicalls:
+            if self._find(node, call):
+                return permission[call]
+            elif debug:
+                print('No match for ' + call + 'found')
 
     def _find(self, node=None, apicall=""):
         """
