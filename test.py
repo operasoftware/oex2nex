@@ -30,18 +30,15 @@ class TestUnaliased(unittest.TestCase):
 
     def test_permission(self):
         self.assertEqual(self.walker.find_apicall(
-            self.jstree,
-            'addItem', 'contextMenus'),
-            'contextMenus')
+            self.jstree, 'addItem'), 'contextMenus')
 
 
 class TestOneAlias(unittest.TestCase):
     def setUp(self):
         self.walker = ASTWalker()
         script = """
-        var tb = opera.contexts.toolbar;
-        button = tb.createItem(props);
-        tb.addItem(button);
+        var mn = opera.contexts.menu;
+        mn.addItem(button);
         """
         self.jstree = JSParser().parse(script)
 
@@ -50,9 +47,7 @@ class TestOneAlias(unittest.TestCase):
 
     def test_permission(self):
         self.assertEqual(self.walker.find_apicall(
-            self.jstree,
-            'addItem', 'browser_action'),
-            'browser_action')
+            self.jstree, 'addItem'), 'contextMenus')
 
 
 class TestMultiAlias(unittest.TestCase):
@@ -61,9 +56,8 @@ class TestMultiAlias(unittest.TestCase):
         script = """
         var o = opera;
         c = o.contexts,
-        t = c.toolbar;
-        button = t.createItem(props);
-        t.addItem(button);
+        mn = c.menu;
+        mn.addItem(button);
         """
         self.jstree = JSParser().parse(script)
 
@@ -72,9 +66,7 @@ class TestMultiAlias(unittest.TestCase):
 
     def test_permission(self):
         self.assertEqual(self.walker.find_apicall(
-            self.jstree,
-            'addItem', 'browser_action'),
-            'browser_action')
+            self.jstree, 'addItem'), 'contextMenus')
 
 
 def APIFinderSimple_suite():
