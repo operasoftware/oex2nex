@@ -286,11 +286,11 @@ class Oex2Crx:
 
                 # data = str.encode(data, 'utf-8')
                 if debug: print(('Fixing variables in ', it.filename))
-                file_data = self._update_scopes(file_data)
-                # wrap all scripts inside opera.isReady()
-                if debug: print(('Wrap scripts in opera.isReady()', it.filename))
+                rval = self._update_scopes(file_data)
+                # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
-                file_data = "opera.isReady(function ()\n{\n" + file_data + "\n});\n"
+                if isinstance(rval, basestring):
+                    file_data = "opera.isReady(function ()\n{\n" + rval + "\n});\n"
             elif re.search(r'\.x?html?$', it.filename, flags=re.I):
                 if debug: print("Adding shim for any page to file %s." % it.filename)
                 file_data = shim_wrap(file_data, "", oex, crx)
@@ -405,9 +405,9 @@ class Oex2Crx:
         except SyntaxError:
             try:
                 jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
-            except:
+            except Exception as ex:
                 print("ERROR: script parsing failed. Some scripts might need manual fixing.")
-                return scriptdata
+                return ex
 
         walker = ASTWalker(debug)
         aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
@@ -585,8 +585,11 @@ class Oex2Crx:
         # scripts are read and written here only if they are merged
         # if not, they are varscopefixed and added in the routine where other files are added.
         if merge_scripts:
-            scriptdata = self._update_scopes(scriptdata.encode("utf-8","backslashreplace"))
-            scriptdata = "opera.isReady(function ()\n{\n" + scriptdata + "\n});\n"
+            rval = self._update_scopes(scriptdata.encode("utf-8","backslashreplace"))
+            # Some scripts might not parse, so don't try to wrap them.
+            # just use the original data
+            if isinstance(rval, basestring):
+                scriptdata = "opera.isReady(function ()\n{\n" + rval + "\n});\n"
             crx.writestr(oscr, scriptdata)
         return serializer.render(domwalker(doc))
 

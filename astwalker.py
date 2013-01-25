@@ -110,7 +110,10 @@ class ASTWalker(NodeVisitor):
                     # replace as follows -
                     # function foo() {} -> var foo = window['foo'] = function () { }
                     fe = child.to_ecma()
-                    fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe)
+                    # Replace only the first (else risk removing function identifiers inside the main function)
+                    fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
+                    if child.identifier.value == "initNavigation":
+                        print 'ec after:', fef
                     fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
                     yield [{"function": {"scope": scope, "node": child, "text": fe, "textnew": fef}}]
                 # Descend
@@ -176,7 +179,7 @@ class ASTWalker(NodeVisitor):
 
                                 elif isinstance(child, ast.Assign):
                                     found = lhs_finder(child, lh_object)
-                                    
+
                                 elif isinstance(child, ast.ExprStatement):
                                     found = lhs_finder(child, lh_object)
 
