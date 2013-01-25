@@ -226,6 +226,9 @@ class Oex2Crx:
         resources = ""
         merge_scripts = False
         for it in oex.infolist():
+            # dropping the _locales content
+            if it.filename.startswith("_locales/"):
+                continue
             if debug: print("Handling file: %s" % it.filename)
             file_data = oex.read(it.filename)
             # If this data has a UTF-8 BOM, remove it
