@@ -111,8 +111,13 @@ class ASTWalker(NodeVisitor):
                     # function foo() {} -> var foo = window['foo'] = function () { }
                     fe = child.to_ecma()
                     # Replace only the first (else risk removing function identifiers inside the main function)
-                    fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
-                    fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
+                    # fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
+                    # fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
+                    # NOTE: This tries to fix some issue where a function
+                    # assignment or call would throw The solution being
+                    # attempted below is to leave the function as it is but
+                    # also export it to global scope
+                    fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + child.identifier.value + ';'
                     yield [{"function": {"scope": scope, "node": child, "text": fe, "textnew": fef}}]
                 # Descend
                 for subchild in self._get_replacements(child, aliases, scope+1):
