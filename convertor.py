@@ -70,6 +70,7 @@ class Oex2Crx:
         self._is_dir  = is_dir
         self._oex = None
         self._crx = None
+        self._zih_file = None
 
     def readoex(self):
         """
@@ -231,6 +232,7 @@ class Oex2Crx:
                 continue
             if debug: print("Handling file: %s" % it.filename)
             file_data = oex.read(it.filename)
+            self._zih_file = it.filename
             # If this data has a UTF-8 BOM, remove it
             # Data is nicer without it (Probably we want to be picky here)
             if file_data[:3] == codecs.BOM_UTF8:
@@ -289,11 +291,12 @@ class Oex2Crx:
 
                 # data = str.encode(data, 'utf-8')
                 if debug: print(('Fixing variables in ', it.filename))
-                rval = self._update_scopes(file_data)
+                rv_scopefix = self._update_scopes(file_data)
                 # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
-                if isinstance(rval, basestring):
-                    file_data = "opera.isReady(function ()\n{\n" + rval + "\n});\n"
+                # If script parsing failed, leave it alone
+                if isinstance(rv_scopefix, basestring):
+                    file_data = "opera.isReady(function ()\n{\n" + rv_scopefix + "\n});\n"
             elif re.search(r'\.x?html?$', it.filename, flags=re.I):
                 if debug: print("Adding shim for any page to file %s." % it.filename)
                 file_data = shim_wrap(file_data, "", oex, crx)
@@ -409,7 +412,7 @@ class Oex2Crx:
             try:
                 jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
             except Exception as ex:
-                print("ERROR: script parsing failed. Some scripts might need manual fixing.")
+                print("ERROR: script parsing failed. This script might need manual fixing.\nFile: %s\n" % self._zih_file)
                 return ex
 
         walker = ASTWalker(debug)
@@ -495,6 +498,7 @@ class Oex2Crx:
                         scriptdata += (oex.read(script_name)).encode("utf-8")
                     except KeyError:
                         print(("The file " + script_name + " was not found in archive."))
+                    self._zih_file = script_name
                 else: # could be an inline script
                     # but popups could not use inline scripts in crx packages
                     if (script.childNodes != []):
