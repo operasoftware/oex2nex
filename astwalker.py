@@ -145,23 +145,33 @@ class ASTWalker(NodeVisitor):
             if self._find(node, call):
                 return permission[call]
             elif debug:
-                print('No match for ' + call + 'found')
+                print('No match for ' + call + ' found')
 
-    def _find(self, node=None, apicall=""):
+    def find_toolbar(self, tree):
         """
-        _find does the real work for find_apicall. Returns True in case of a match
-        or None if nothing is found.
+        Look for opera.contexts.toolbar.addItem() so we can add the 
+        'browser_action' directive to manfest.json
+        """
+        if self._find(tree, 'addItem', ["toolbar"]):
+            return True
+        else:
+            print('toolbar.addItem() not found.')
+
+    def _find(self, node=None, apicall="", lhs_shortcut=["menu", "block",
+                                                         "allow", "tabs"]):
+        """
+        _find does the real work for find_apicall. Optional lsh_shortcut arg
+        allows for a quick short-circuit. Returns True in case of a match or
+        None if nothing is found.
         """
         debug = self._debug
-        #best guesses at an API that requires permission is being used
-        lhs_shortcut = ["menu", "block", "allow", "tabs"]
         found = False
 
         #lhs is probably actually a parent object or container
         def lhs_finder(node, lh_object):
             """
-            For a given node, determines if it contains a "lh_object", which should
-            be an ancestor object to an API method call.
+            For a given node, determines if it contains a "lh_object", which
+            should be an ancestor object to an API method call.
             """
             # var is either a variable declaration or an assignment (which could be
             # an implicit global declaration)
