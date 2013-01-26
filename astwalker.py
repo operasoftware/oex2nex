@@ -152,10 +152,11 @@ class ASTWalker(NodeVisitor):
         Look for opera.contexts.toolbar.addItem() so we can add the 
         'browser_action' directive to manfest.json
         """
+        debug = self._debug
         if self._find(tree, 'addItem', ["toolbar"]):
             return True
         else:
-            print('toolbar.addItem() not found.')
+            if debug: print('toolbar.addItem() not found.')
 
     def _find(self, node=None, apicall="", lhs_shortcut=["menu", "block",
                                                          "allow", "tabs"]):
