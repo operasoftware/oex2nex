@@ -42,6 +42,7 @@ oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 oex_resource_loader = shim_dir + "popup_resourceloader"
 # TODO: add a smart way of adding these following default permissions
 permissions = ["http://*/*", "https://*/*", "storage", "cookies"]
+has_button = False
 
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
@@ -370,7 +371,8 @@ class Oex2Crx:
             manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
         if has_popup:
             manifest += ',\n"browser_action" : {}' # Let the APIs do their job  #"default_popup" : "popup.html"}'
-        #probably have an if has_toolbar here, or iterative over our AST walker to insert stuff into manifest.json
+        if has_button and not has_popup:
+            manifest += ',\n"browser_action" : {}'
         if has_option:
             manifest += ',\n"options_page" : "options.html"'
         # default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
@@ -458,8 +460,12 @@ class Oex2Crx:
                                                              'getSelected',
                                                              'getFocused'))
             self._add_permission(walker.find_apicall(jstree, 'add', 'remove'))
-
+        
         find_permissions(jstree)
+        if walker.find_button(jstree):
+            global has_button
+            has_button = True
+        print('has_button', has_button)
         return scriptdata
 
     def convert(self):

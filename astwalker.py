@@ -147,7 +147,7 @@ class ASTWalker(NodeVisitor):
             elif debug:
                 print('No match for ' + call + ' found')
 
-    def find_toolbar(self, tree):
+    def find_button(self, tree):
         """
         Look for opera.contexts.toolbar.addItem() so we can add the 
         'browser_action' directive to manfest.json
