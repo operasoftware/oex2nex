@@ -149,7 +149,7 @@ class TestAPIFinder(unittest.TestCase):
         mn.addItem(button);
         """
         self.assertEqual(self.walker.find_apicall(
-            self.jstree.parse(script), 'create'), 'tabs')
+            self.jstree.parse(script), 'addItem'), 'contextMenus')
 
     def test_finder_multi_aliased(self):
         script = """
