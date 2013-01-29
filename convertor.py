@@ -48,7 +48,7 @@ has_button = False
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
 
 
-class Oex2crx:
+class Oex2Crx:
     """
     Converts an Opera extension packaged as .oex to an equivalent .crx file.
     - parse command line and get options (zip file/oex, maybe the key to use for signing crx)
