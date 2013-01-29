@@ -187,6 +187,13 @@ class Oex2Crx:
         for feat in featurelist:
             featurenames.append(feat.attrib["name"])
         if debug: print(("Feature names: ", featurenames))
+        # Store preference data and add them to the index doc using a script
+        prefstore = {}
+        prefnodes = root.findall("{http://www.w3.org/ns/widgets}preference")
+        for pref in prefnodes:
+            if "name" in pref.attrib:
+                prefstore[pref.attrib["name"]] = pref.attrib["value"]
+        if debug: print(("Preferences: ", prefstore))
         indexfile = indexdoc
         content = root.find("{http://www.w3.org/ns/widgets}content")
         if content is not None:
@@ -197,20 +204,6 @@ class Oex2Crx:
         if icon is not None:
             if icon.find("[@src]") is not None:
                 iconfile = icon.attrib["src"]
-        # default_locale should be set in manifest.json *only* if there is a
-        # corresponding _locales/foo folder in the input using dict.get here
-        # because it was blowing up on an extension w/o @defaultlocale this
-        # gets around it, but renders the below KeyError condition useless...
-        # (as default_local gets set to None)
-        default_locale = root.attrib.get("defaultlocale", None)
-        if default_locale:
-            try:
-                if debug : print( 'found default locale attribute: ' + default_locale )
-                oex.getinfo('_locales/' + default_locale + '/messages.json')
-            except KeyError:
-                if debug : print('no _locales/' + default_locale +
-                                  '/messages.json in source zip file, ignoring default locale' )
-                default_locale = ''
 
         shim_wrap = self._shim_wrap
         # parsing includes and excludes from the included scripts
@@ -227,9 +220,24 @@ class Oex2Crx:
         resources = ""
         merge_scripts = False
         zf_members = oex.namelist()
+        # default_locale should be set in manifest.json *only* if there is a
+        # corresponding _locales/foo folder in the input
+        default_locale = root.find("[@defaultlocale]")
+        if default_locale is not None:
+            default_locale = root.attrib["defaultlocale"]
+        if default_locale: # not None or empty string
+                if debug : print( 'found default locale attribute: ' + default_locale )
+                # some extensions also keep a manifest.json in locales/def-loc/
+                # we should probably copy over the file from locales to _locales
+                # and use the default_locale entry
+                if '_locales/' + default_locale + '/messages.json' not in zf_members:
+                    if debug : print('no _locales/' + default_locale +
+                                  '/messages.json in source zip file, ignoring default locale' )
+                    default_locale = ''
+
         for filename in zf_members:
-            # dropping the _locales content
-            if filename.startswith("_locales/"):
+            # dropping the _locales content if default_locale is not defined
+            if not default_locale and filename.startswith("_locales/"):
                 continue
             if debug: print("Handling file: %s" % filename)
             file_data = oex.read(filename)
@@ -247,14 +255,14 @@ class Oex2Crx:
                 # file and wrapped in an opera.isReady() function. Also this new
                 # file needs to be put in the indexdoc as a script and others
                 # removed
-                file_data = shim_wrap(file_data, "index", oex, crx)
+                file_data = shim_wrap(file_data, "index", prefstore)
             elif filename == popupdoc:
                 # same as with indexdoc
                 has_popup = True
-                file_data = shim_wrap(file_data, "popup", oex, crx)
+                file_data = shim_wrap(file_data, "popup")
             elif filename == optionsdoc:
                 has_option = True
-                file_data = shim_wrap(file_data, "option", oex, crx)
+                file_data = shim_wrap(file_data, "option")
             elif filename.find("includes/") == 0 and filename.endswith(".js"):
                 has_injscrs = True
                 f_includes = []
@@ -300,7 +308,7 @@ class Oex2Crx:
                     file_data = "opera.isReady(function ()\n{\n" + rv_scopefix + "\n});\n"
             elif re.search(r'\.x?html?$', filename, flags=re.I):
                 if debug: print("Adding shim for any page to file %s." % filename)
-                file_data = shim_wrap(file_data, "", oex, crx)
+                file_data = shim_wrap(file_data, "")
 
             # Web accessible resources list
             if filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
@@ -460,12 +468,11 @@ class Oex2Crx:
                                                              'getSelected',
                                                              'getFocused'))
             self._add_permission(walker.find_apicall(jstree, 'add', 'remove'))
-        
+
         find_permissions(jstree)
         if walker.find_button(jstree):
             global has_button
             has_button = True
-        print('has_button', has_button)
         return scriptdata
 
     def convert(self):
@@ -488,7 +495,7 @@ class Oex2Crx:
         print("Done!")
 
 
-    def _shim_wrap(self, html, file_type="index", oex=None, crx=None, merge_scripts=False):
+    def _shim_wrap(self, html, file_type="index", prefs=None, merge_scripts=False):
         """
         Applies certain corrections to the HTML source passed to this method.
         Specifically adds the relevant shim script, wraps all script text
@@ -500,8 +507,35 @@ class Oex2Crx:
         doc = htmlparser.parse(html, "utf-8")
         scriptdata = ""
         inlinescrdata = ""
+        oex = self._oex
+        crx = self._crx
         # FIXME: use the correct base for the @src (mostly this is the root [''])
         # Remove scripts only if we are merging all of them
+
+        def add_dom_prefs(doc, prefs):
+            """ Add an external script with the data taken from preference
+            elements in config.xml. Returns a tuple of doc, prefs script and
+            script src"""
+            if isinstance(prefs, dict):
+                pref_str = ""
+                for key in prefs:
+                    pref_str += 'widget.preferences["' + key + '"] = "' + prefs[key] + '";\n'
+                if debug: "Preferences stringified: " + pref_str
+                if pref_str:
+                    p_scr = doc.createElement("script")
+                    p_scr_src = "exported_prefs.js"
+                    p_scr.setAttribute("src", p_scr_src)
+                    head = doc.getElementsByTagName("head")
+                    if head is not None and head != []:
+                        head = head[0]
+                        head.insertBefore(p_scr, head.firstChild)
+                    else:
+                        doc.documentElement.insertBefore(p_scr, doc.documentElement.firstChild)
+
+                return (doc, pref_str, p_scr_src)
+
+            return (doc, None, None)
+
         if merge_scripts:
             for script in doc.getElementsByTagName("script"):
                 script_name = script.getAttribute("src")
@@ -555,10 +589,12 @@ class Oex2Crx:
                 oscr = "allscripts_background.js"
             shim.setAttribute("src", oex_bg_shim)
             bgdata = self._get_shim_data(oex_bg_shim)
-            try:
-                crx.getinfo(oex_bg_shim)
-            except KeyError:
+            if oex_bg_shim not in crx.namelist():
                 crx.writestr(oex_bg_shim, bgdata)
+            if prefs:
+                (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
+                pref_sdata = "opera.isReady(function ()\n{\n" + pref_sdata + "\n});\n"
+                crx.writestr(pref_src, pref_sdata)
         else: # add the 'anypage.shim' to all content we receive here:
             #NOT : file_type == "popup" or file_type == "option":
             # Hopefully there would be only one popup.html or options.html in
@@ -569,9 +605,7 @@ class Oex2Crx:
             shim.setAttribute("src", oex_anypage_shim)
             ppdata = self._get_shim_data(oex_anypage_shim)
             # add popup shim only if it hasn't been added already
-            try:
-                crx.getinfo(oex_anypage_shim)
-            except KeyError:
+            if oex_anypage_shim not in crx.namelist():
                 crx.writestr(oex_anypage_shim, ppdata)
 
         if merge_scripts:
