@@ -238,8 +238,6 @@ class TestBrowserAction(unittest.TestCase):
         """
         self.assertTrue(self.walker.find_button(self.jstree.parse(script)))
 
-    
-
 
 def APIFinder_suite():
     return unittest.TestLoader().loadTestsFromTestCase(TestAPIFinder)
