@@ -36,7 +36,7 @@ optionsdoc = "options.html"
 shim_dir = "oex_shim/"
 #"http://addons.opera.com/tools/oex_shim/"
 shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
-oex_bg_shim =  shim_dir + "operaextensions_background.js"
+oex_bg_shim = shim_dir + "operaextensions_background.js"
 oex_anypage_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 oex_resource_loader = shim_dir + "popup_resourceloader"
@@ -47,7 +47,8 @@ has_button = False
 #Header for Chrome 24(?) compatible .crx package
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
 
-class Oex2Crx:
+
+class Oex2crx:
     """
     Converts an Opera extension packaged as .oex to an equivalent .crx file.
     - parse command line and get options (zip file/oex, maybe the key to use for signing crx)
@@ -68,7 +69,7 @@ class Oex2Crx:
         self._in_file = in_file
         self._out_file = out_file
         self._key_file = key_file
-        self._is_dir  = is_dir
+        self._is_dir = is_dir
         self._oex = None
         self._crx = None
         self._zih_file = None
@@ -78,7 +79,8 @@ class Oex2Crx:
         Reads the input file, creates/overwrites the output file and returns
         the archives to the caller
         """
-        if debug: print('Reading oex file.')
+        if debug:
+            print('Reading oex file.')
         try:
             oex = zipfile.ZipFile(self._in_file, "r")
             if self._is_dir:
@@ -90,7 +92,8 @@ class Oex2Crx:
             sys.exit(2)
 
         self._oex, self._crx = oex, crx
-        if debug: print(('Oex:', oex, ", Crx:", crx))
+        if debug:
+            print(('Oex:', oex, ", Crx:", crx))
 
     def _add_permission(self, *perms):
         """Adds a permission (or multiple) to the permission list."""
@@ -122,17 +125,18 @@ class Oex2Crx:
             # Also a quick sanity check for Opera extension format
             configStr = oex.read("config.xml")
         except KeyError as kex:
-            sys.exit ("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
+            sys.exit("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
 
         #Handle UTF-8 BOM here; do we care about other encodings?
-        if configStr[:3] == codecs.BOM_UTF8 :
+        if configStr[:3] == codecs.BOM_UTF8:
             configStr = configStr[3:]
         try:
             configStr = configStr.encode('UTF-8')
         except UnicodeDecodeError as e:
             print ("Encoding error:", e)
             pass
-        if debug: print(("Config.xml", configStr))
+        if debug:
+            print(("Config.xml", configStr))
         root = etree.fromstring(configStr)
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
@@ -160,20 +164,20 @@ class Oex2Crx:
 
             return rval
 
-        name = _get_best_elem (root, "name")
+        name = _get_best_elem(root, "name")
         version = root.find("[@version]")
         if version is not None:
             version = root.attrib["version"]
             #  CRX version need to be of the form 12.34.454.23232
             #  P&C version could be any string that has a number and such
-            version = re.sub(r'[^\d\.]+','.',version)
+            version = re.sub(r'[^\d\.]+', '.', version)
             version = version.strip('.')
         else:
             version = "1.0.0.1"
         cid = root.find("[@id]")
         if cid is not None:
             cid = root.attrib["id"]
-        description = _get_best_elem (root, "description")
+        description = _get_best_elem(root, "description")
         accesslist = root.findall("{http://www.w3.org/ns/widgets}access")
         accessorigins = []
         for acs in accesslist:
@@ -181,19 +185,22 @@ class Oex2Crx:
                 accessorigins.append([acs.attrib["origin"], acs.attrib["subdomains"]])
             else:
                 accessorigins.append([acs.attrib["origin"], "false"])
-        if debug: print(("Access origins:" , accessorigins))
+        if debug:
+            print(("Access origins:", accessorigins))
         featurelist = root.findall("{http://www.w3.org/ns/widgets}feature")
         featurenames = []
         for feat in featurelist:
             featurenames.append(feat.attrib["name"])
-        if debug: print(("Feature names: ", featurenames))
+        if debug:
+            print(("Feature names: ", featurenames))
         # Store preference data and add them to the index doc using a script
         prefstore = {}
         prefnodes = root.findall("{http://www.w3.org/ns/widgets}preference")
         for pref in prefnodes:
             if "name" in pref.attrib:
                 prefstore[pref.attrib["name"]] = pref.attrib["value"]
-        if debug: print(("Preferences: ", prefstore))
+        if debug:
+            print(("Preferences: ", prefstore))
         indexfile = indexdoc
         content = root.find("{http://www.w3.org/ns/widgets}content")
         if content is not None:
@@ -209,9 +216,9 @@ class Oex2Crx:
         # parsing includes and excludes from the included scripts
         includes = []
         excludes = []
-        injscrlist  = []
+        injscrlist = []
         inj_scr_data = ""
-        inj_scripts  = ""
+        inj_scripts = ""
         matches = ""
         discards = ""
         has_popup = False
@@ -225,21 +232,24 @@ class Oex2Crx:
         default_locale = root.find("[@defaultlocale]")
         if default_locale is not None:
             default_locale = root.attrib["defaultlocale"]
-        if default_locale: # not None or empty string
-                if debug : print( 'found default locale attribute: ' + default_locale )
+        # not None or empty string
+        if default_locale:
+                if debug:
+                    print('found default locale attribute: ' + default_locale)
                 # some extensions also keep a manifest.json in locales/def-loc/
                 # we should probably copy over the file from locales to _locales
                 # and use the default_locale entry
                 if '_locales/' + default_locale + '/messages.json' not in zf_members:
-                    if debug : print('no _locales/' + default_locale +
-                                  '/messages.json in source zip file, ignoring default locale' )
+                    if debug:
+                        print('no _locales/' + default_locale + '/messages.json in source zip file, ignoring default locale')
                     default_locale = ''
 
         for filename in zf_members:
             # dropping the _locales content if default_locale is not defined
             if not default_locale and filename.startswith("_locales/"):
                 continue
-            if debug: print("Handling file: %s" % filename)
+            if debug:
+                print("Handling file: %s" % filename)
             file_data = oex.read(filename)
             self._zih_file = filename
             # If this data has a UTF-8 BOM, remove it
@@ -273,11 +283,13 @@ class Oex2Crx:
                 # store the script file name to add it to manifest's content_scripts section
                 if merge_scripts:
                     inj_scr_data += str.encode(oex.read(filename), "utf-8")
-                if debug: print(('Included script:', filename))
+                if debug:
+                    print(('Included script:', filename))
                 pos = file_data.find("==/UserScript==")
                 if pos != -1:
                     ijsProlog = file_data[:pos]
-                    if debug: print(("user script prolog: " , ijsProlog))
+                    if debug:
+                        print(("user script prolog: ", ijsProlog))
                     lines = ijsProlog.split("\n")
                     for line in lines:
                         ipos = line.find("@include ")
@@ -288,10 +300,12 @@ class Oex2Crx:
                         if epos != -1:
                             excludes.append((line[epos + 9:]).strip())
                             f_excludes.append((line[epos + 9:]).strip())
-                    if debug: print(("Includes: " , includes, " Excludes: ", excludes))
+                    if debug:
+                        print(("Includes: ", includes, " Excludes: ", excludes))
                 if not len(f_includes):
-                    f_includes = ["*"] # uses glob pattern not match pattern (<all_urls>)
-                injscrlist.append({"file": filename, "includes" : f_includes, "excludes": f_excludes})
+                    # uses glob pattern not match pattern (<all_urls>)
+                    f_includes = ["*"]
+                injscrlist.append({"file": filename, "includes": f_includes, "excludes": f_excludes})
             elif not merge_scripts and filename.endswith(".js"):
                 # do we actually *need* to make sure it's a Unicode string and not a set of
                 # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
@@ -299,7 +313,8 @@ class Oex2Crx:
                 # UTF-8 or ASCII
 
                 # data = str.encode(data, 'utf-8')
-                if debug: print(('Fixing variables in ', filename))
+                if debug:
+                    print(('Fixing variables in ', filename))
                 rv_scopefix = self._update_scopes(file_data)
                 # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
@@ -307,7 +322,8 @@ class Oex2Crx:
                 if isinstance(rv_scopefix, basestring):
                     file_data = "opera.isReady(function ()\n{\n" + rv_scopefix + "\n});\n"
             elif re.search(r'\.x?html?$', filename, flags=re.I):
-                if debug: print("Adding shim for any page to file %s." % filename)
+                if debug:
+                    print("Adding shim for any page to file %s." % filename)
                 file_data = shim_wrap(file_data, "")
 
             # Web accessible resources list
@@ -324,7 +340,8 @@ class Oex2Crx:
                         do_copy = True
 
                 if noloc_filename and do_copy:
-                    if debug: print("Copying a localised file : %s to the root of package as : %s" % (filename, noloc_filename))
+                    if debug:
+                        print("Copying a localised file : %s to the root of package as : %s" % (filename, noloc_filename))
                 try:
                     crx.writestr(filename, file_data)
                     if noloc_filename and do_copy:
@@ -335,7 +352,8 @@ class Oex2Crx:
                         crx.writestr(noloc_filename, file_data.encode("utf-8"))
 
         if has_injscrs:
-            if debug: print('Has injected scripts')
+            if debug:
+                print('Has injected scripts')
             # Merged injected scripts
             if merge_scripts and inj_scr_data:
                 inj_scr_data = "opera.isReady(function ()\n{\n" + inj_scr_data + "\n});\n"
@@ -353,9 +371,9 @@ class Oex2Crx:
                     print(("Could not open " + oex_injscr_shim))
 
             if merge_scripts:
-                inj_scripts = '"' + oex_injscr_shim  + '", "allscripts_injected.js"'
+                inj_scripts = '"' + oex_injscr_shim + '", "allscripts_injected.js"'
             else:
-                inj_scripts = '"' + oex_injscr_shim  + '", ' + inj_scripts
+                inj_scripts = '"' + oex_injscr_shim + '", ' + inj_scripts
 
             for s in includes:
                 # double-quoted string
@@ -367,7 +385,8 @@ class Oex2Crx:
             inj_scripts = inj_scripts[:-1]
             matches = matches[:-1]
             discards = discards[:-1]
-            if debug: print(("Injected scripts:" + inj_scripts))
+            if debug:
+                print(("Injected scripts:" + inj_scripts))
             if not matches:
                 # match any page
                 matches = '"<all_urls>"'
@@ -378,14 +397,15 @@ class Oex2Crx:
             # any way to include multiple icons if the oex has them?
             manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
         if has_popup:
-            manifest += ',\n"browser_action" : {}' # Let the APIs do their job  #"default_popup" : "popup.html"}'
+            # Let the APIs do their job  #"default_popup" : "popup.html"}'
+            manifest += ',\n"browser_action" : {}'
         if has_button and not has_popup:
             manifest += ',\n"browser_action" : {}'
         if has_option:
             manifest += ',\n"options_page" : "options.html"'
         # default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
         if default_locale:
-            manifest += ',\n"default_locale" : "'+default_locale+'"'
+            manifest += ',\n"default_locale" : "' + default_locale + '"'
         if has_injscrs:
             # create separate entries for all injected scripts
             content_scripts = ""
@@ -398,22 +418,25 @@ class Oex2Crx:
         # all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
         if resources:
             resources = resources[:-1]
-            if debug: print(("Loadable resources:", resources))
+            if debug:
+                print(("Loadable resources:", resources))
             manifest += ',\n"web_accessible_resources" : [' + resources + ']'
 
         manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
         manifest += '\n}\n'
 
-        if debug: print(("Manifest: ", manifest))
+        if debug:
+            print(("Manifest: ", manifest))
         crx.writestr("manifest.json", manifest)
-        if debug: print( "Adding resource_loader files" )
-        crx.writestr(oex_resource_loader+".html", """<!DOCTYPE html>
+        if debug:
+            print("Adding resource_loader files")
+        crx.writestr(oex_resource_loader + ".html", """<!DOCTYPE html>
 <style>body { margin: 0; padding: 0; min-width: 300px; min-height:
  200px; }</style>
 <iframe seamless width="100%" height="100%" style="display: block;
  position: absolute;"></iframe>
 <script src="/oex_shim/popup_resourceloader.js"></script>""")
-        crx.writestr(oex_resource_loader+".js", """function getParam( key ) {
+        crx.writestr(oex_resource_loader + ".js", """function getParam( key ) {
    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
    var regexS = "[\\?&]" + key + "=([^&#]*)";
    var regex = new RegExp(regexS);
@@ -440,7 +463,7 @@ class Oex2Crx:
                 return ex
 
         walker = ASTWalker(debug)
-        aliases = {"window": ["window"], "opera": ["opera","window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences":["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
+        aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
         scriptdata = jstree.to_ecma()
         for rval in walker._get_replacements(jstree, aliases):
             # if debug: print(('walker ret:', rval))
@@ -481,19 +504,19 @@ class Oex2Crx:
         self._convert()
         # extract file to the specified directory
         if self._is_dir:
-            if debug: print(("Extracting .crx file to:", self._out_file))
+            if debug:
+                print(("Extracting .crx file to:", self._out_file))
             try:
                 self._crx.extractall(self._out_file)
             except IOError as e:
                 print(("ERROR: Threw exception while extracting crx file to the directory: ",
-                    self._out_file, "\nGot:", e , "\nIs there a file by the same name?"))
+                    self._out_file, "\nGot:", e, "\nIs there a file by the same name?"))
         self._oex.close()
         self._crx.close()
         # Let us not sign if the output requested is for directory
         if self._key_file and not self._is_dir:
             self.signcrx()
         print("Done!")
-
 
     def _shim_wrap(self, html, file_type="index", prefs=None, merge_scripts=False):
         """
@@ -520,7 +543,8 @@ class Oex2Crx:
                 pref_str = ""
                 for key in prefs:
                     pref_str += 'widget.preferences["' + key + '"] = "' + prefs[key] + '";\n'
-                if debug: "Preferences stringified: " + pref_str
+                if debug:
+                    print("Preferences stringified: " + pref_str)
                 if pref_str:
                     p_scr = doc.createElement("script")
                     p_scr_src = "exported_prefs.js"
@@ -539,18 +563,21 @@ class Oex2Crx:
         if merge_scripts:
             for script in doc.getElementsByTagName("script"):
                 script_name = script.getAttribute("src")
-                if debug: 'Script from ' + file_type + ' document:' + script_name
+                if debug:
+                    print('Script from ' + file_type + ' document:' + script_name)
                 if script_name:
-                    if debug: print(('reading script data:', script_name))
+                    if debug:
+                        print(('reading script data:', script_name))
                     try:
                         scriptdata += (oex.read(script_name)).encode("utf-8")
                     except KeyError:
                         print(("The file " + script_name + " was not found in archive."))
                     self._zih_file = script_name
-                else: # could be an inline script
+                # could be an inline script
+                else:
                     # but popups could not use inline scripts in crx packages
                     if (script.childNodes != []):
-                        inlinescrdata  = ""
+                        inlinescrdata = ""
                         for cnode in script.childNodes:
                             inlinescrdata += cnode.nodeValue
                         inlinescrdata += script.childNodes[0].nodeValue
@@ -595,7 +622,8 @@ class Oex2Crx:
                 (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
                 pref_sdata = "opera.isReady(function ()\n{\n" + pref_sdata + "\n});\n"
                 crx.writestr(pref_src, pref_sdata)
-        else: # add the 'anypage.shim' to all content we receive here:
+        # add the 'anypage.shim' to all content we receive here:
+        else:
             #NOT : file_type == "popup" or file_type == "option":
             # Hopefully there would be only one popup.html or options.html in
             # the package (Localisation ~!~!~!~)
@@ -640,7 +668,7 @@ class Oex2Crx:
         # scripts are read and written here only if they are merged
         # if not, they are varscopefixed and added in the routine where other files are added.
         if merge_scripts:
-            rval = self._update_scopes(scriptdata.encode("utf-8","backslashreplace"))
+            rval = self._update_scopes(scriptdata.encode("utf-8", "backslashreplace"))
             # Some scripts might not parse, so don't try to wrap them.
             # just use the original data
             if isinstance(rval, basestring):
@@ -656,17 +684,21 @@ class Oex2Crx:
         publen = 0
         siglen = 0
         try:
-            import subprocess, shlex, struct
+            import subprocess
+            import shlex
+            import struct
             password = ""
             print('Signing CRX package:\nProvide password to load private key:')
             password = sys.stdin.readline()
             if password[-1] == "\n":
                 password = password[:-1]
             args = shlex.split('openssl pkey -outform DER -pubout -out pubkey.der -in "' + key_file + '" -passin "pass:' + password + '"')
-            if debug: print(args)
+            if debug:
+                print(args)
             subprocess.call(args)
             args = shlex.split('openssl dgst -sha1 -binary -sign "' + key_file + '" -passin "pass:' + password + '" -out "' + out_file + '.sig" "' + out_file + '"')
-            if debug: print(args)
+            if debug:
+                print(args)
             subprocess.call(args)
             try:
                 pfh = open("pubkey.der", 'rb')
@@ -699,7 +731,7 @@ class Oex2Crx:
     def _get_shim_data(self, shim):
         data = None
         try:
-            sfh = open(shim,'r')
+            sfh = open(shim, 'r')
             if sfh is not None:
                 data = sfh.read()
                 sfh.close()
@@ -708,15 +740,18 @@ class Oex2Crx:
             sys.exit(4)
         return data
 
+
 def fetch_shims():
     """ Download shim files from remote server """
-    import urllib.request, urllib.error, urllib.parse
+    import urllib.request
+    import urllib.error
+    import urllib.parse
     attempts = 0
     shims = iter(("operaextensions_background.js", "operaextensions_popup.js", "operaextensions_injectedscript.js"))
     shim = next(shims)
     url = shim_remote + shim
     while attempts < 10:
-        attempts +=1
+        attempts += 1
         try:
             res = urllib.request.urlopen(url)
             if res.code == 200:
@@ -730,7 +765,8 @@ def fetch_shims():
                 except Exception as e:
                     sys.exit(e)
             else:
-                if debug: print(('Response:', res.code))
+                if debug:
+                    print(('Response:', res.code))
             try:
                 shim = next(shims)
             except StopIteration:
@@ -738,7 +774,8 @@ def fetch_shims():
             url = shim_remote + shim
         except urllib.error.HTTPError as ex:
             if ex.code == 401:
-                if debug: print(('HTTP Authentication required:', ex.code, ex.msg, ex.hdrs))
+                if debug:
+                    print(('HTTP Authentication required:', ex.code, ex.msg, ex.hdrs))
                 auth_type = ex.hdrs["WWW-Authenticate"].split()[0]
                 realm = ex.hdrs["WWW-Authenticate"].split('=')[1]
                 realm = realm.strip('"')
@@ -756,10 +793,10 @@ def fetch_shims():
                     urllib.request.install_opener(opener)
                     continue
             else:
-                print(('Threw :', ex , ' when fetching ', url))
+                print(('Threw :', ex, ' when fetching ', url))
 
 
-def main(args = None):
+def main(args=None):
     import argparse
     if len(sys.argv) < 3:
         sys.argv.append('-h')
