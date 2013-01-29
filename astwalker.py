@@ -174,15 +174,13 @@ class ASTWalker(NodeVisitor):
             For a given node, determines if it contains a "lh_object", which
             should be an ancestor object to an API method call.
             """
-            # var is either a variable declaration or an assignment (which could be
-            # an implicit global declaration)
-            #TODO: worth following object chain up to window.opera?
+            # var is either a VarStatement or VarDecl (which
+            # could be an implicit global declaration)
             var = node.to_ecma()
-            var_list = var.split(',')
-            for var in var_list:
-                if lh_object in var:
-                    if debug: print('Aliased API call found (maybe)', node.to_ecma())
-                    return True
+            if lh_object in var:
+                if debug:
+                    print('Aliased API call found (maybe)', node.to_ecma())
+                return True
 
         try:
             for child in self.visit(node):
@@ -196,12 +194,8 @@ class ASTWalker(NodeVisitor):
                             if debug: print('API call found (maybe):', method_call)
                             found = True
                         else:
-                            #is this crazy?
                             for child in self.visit(node):
                                 if isinstance(child, ast.VarStatement):
-                                    found = lhs_finder(child, lh_object)
-
-                                elif isinstance(child, ast.Assign):
                                     found = lhs_finder(child, lh_object)
 
                                 elif isinstance(child, ast.ExprStatement):
