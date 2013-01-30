@@ -149,7 +149,8 @@ class Oex2Crx:
             sys.exit("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
 
 
-        if debug: print(("Config.xml", configStr))
+        if debug: 
+            print(("Config.xml", configStr))
         root = etree.fromstring(configStr.encode('UTF-8')) # xml.etree requires UTF-8 input
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
