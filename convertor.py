@@ -411,7 +411,7 @@ class Oex2Crx:
         name = json.JSONEncoder().encode(name)
 
         manifest = ""
-        manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
+        manifest = '{\n"name": ' + name + ',\n"description": ' + description + ',\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
         if iconfile is not None:
             # any way to include multiple icons if the oex has them?
             manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
