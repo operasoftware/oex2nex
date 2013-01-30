@@ -163,6 +163,7 @@ class Oex2Crx:
             Find and return default or English tag's content when config.xml
             has same tag with different xml:lang
             """
+
             elems = root.findall("{http://www.w3.org/ns/widgets}" + tag)
             rval = ""
             # Use some 'en' value of the text content if the element is localised
@@ -183,7 +184,7 @@ class Oex2Crx:
             return rval
 
         name = _get_best_elem(root, "name")
-        if root.find("[@version]"):
+        if root.find("[@version]") is not None:
             version = self._normalize_version(root.attrib["version"])
         else:
             version = "1.0.0.1"
@@ -404,6 +405,11 @@ class Oex2Crx:
                 # match any page
                 matches = '"<all_urls>"'
 
+        import json
+
+        description = json.JSONEncoder().encode(description)
+        name = json.JSONEncoder().encode(name)
+
         manifest = ""
         manifest = '{\n"name": "' + name + '",\n"description": "' + description + '",\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
         if iconfile is not None:
@@ -607,7 +613,11 @@ class Oex2Crx:
                             script_data += cnode.nodeValue
                         script_data = script_data.strip()
                         if script_data:
-                            script_data = "opera.isReady(function ()\n{\n" + script_data + "\n});\n"
+                            rv_scopefix = self._update_scopes(script_data)
+                            if isinstance(rv_scopefix, basestring):
+                                script_data = "opera.isReady(function ()\n{\n" + rv_scopefix + "\n});\n"
+                            else:
+                                script_data = "opera.isReady(function ()\n{\n" + script_data + "\n});\n"
                             script_count += 1
                             iscr = doc.createElement("script")
                             iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
