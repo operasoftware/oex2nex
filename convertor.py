@@ -6,6 +6,7 @@ import sys
 import re
 import zipfile
 import codecs
+import json
 import xml.etree.ElementTree as etree
 import logging
 import codecs
@@ -395,10 +396,9 @@ class Oex2Crx:
                 # match any page
                 matches = '"<all_urls>"'
 
-        import json
-
-        description = json.JSONEncoder().encode(description)
-        name = json.JSONEncoder().encode(name)
+        jenc = json.JSONEncoder()
+        description = jenc.encode(description)
+        name = jenc.encode(name)
 
         manifest = ""
         manifest = '{\n"name": ' + name + ',\n"description": ' + description + ',\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
@@ -419,7 +419,7 @@ class Oex2Crx:
             # create separate entries for all injected scripts
             content_scripts = ""
             for cs in injscrlist:
-                content_scripts += '\n{"js": ["' + oex_injscr_shim + '", "' + cs["file"] + '"], "matches": ["<all_urls>"], "include_globs": ' + str(cs["includes"]).replace('\'', '"') + ', "exclude_globs": ' + str(cs["excludes"]).replace('\'', '"') + ', "run_at": "document_start", "all_frames" : true},'
+                content_scripts += '\n{"js": ["' + oex_injscr_shim + '", ' + jenc.encode(cs["file"]) + '], "matches": ["<all_urls>"], "include_globs": ' + jenc.encode(cs["includes"]) + ', "exclude_globs": ' + jenc.encode(cs["excludes"]) + ', "run_at": "document_start", "all_frames" : true},'
             content_scripts = content_scripts[:-1]
             manifest += ',\n"content_scripts": [' + content_scripts + ']'
 
