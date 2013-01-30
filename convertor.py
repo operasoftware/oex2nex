@@ -111,6 +111,24 @@ class Oex2Crx:
             return list(st)
         return ", ".join('"' + perm + '"' for perm in uniquify(permissions))
 
+    def _normalize_version(self, version):
+        """Attemps to clean up existing config.xml @version values and
+        validate them against the CRX requirements (1-4 dot-separated integers
+        each between 0 and 65536). If that fails, returns '1.0.0.1'
+        """
+        # in case a stray None (or whatever) makes it in
+        version = str(version)
+        version = re.sub(r'[^\d\.]+', '.', version)
+        version = version.strip('.')
+        valid_version = re.match(r"^(([0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|"
+                                 "6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2]"
+                                 "[0-9]|6553[0-6])\.){0,3}([0-9]|[1-9][0-9]"
+                                 "{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4]"
+                                 "[0-9]{2}|655[0-2][0-9]|6553[0-6])$", version)
+        if not valid_version:
+            version = "1.0.0.1"
+        return version
+
     def _convert(self):
         """
         Reads the oex file, parses its config.xml, includes/, does the
@@ -165,13 +183,8 @@ class Oex2Crx:
             return rval
 
         name = _get_best_elem(root, "name")
-        version = root.find("[@version]")
-        if version is not None:
-            version = root.attrib["version"]
-            #  CRX version need to be of the form 12.34.454.23232
-            #  P&C version could be any string that has a number and such
-            version = re.sub(r'[^\d\.]+', '.', version)
-            version = version.strip('.')
+        if root.find("[@version]"):
+            version = self._normalize_version(root.attrib["version"])
         else:
             version = "1.0.0.1"
         cid = root.find("[@id]")
