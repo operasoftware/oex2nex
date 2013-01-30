@@ -826,7 +826,8 @@ cp1252_detector = re.compile(r'^(?:[\x80-\xBF])*$', re.X)
 xa4_detector = re.compile(r'^(?:\xA4)*$', re.X)
 
 def unicoder(string):
-    '''make unicode'''
+    '''make unicode. This method is copied from http://pastebin.com/f76609aec'''
+    
     try:
         if re.match(utf8_detector, string):
             if string[:3] == codecs.BOM_UTF8 : # remove any BOM from UTF-8 data
