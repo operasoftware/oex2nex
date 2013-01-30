@@ -9,7 +9,7 @@ import codecs
 import json
 import xml.etree.ElementTree as etree
 import logging
-import codecs
+
 try:
     import html5lib
 except ImportError:
