@@ -110,8 +110,14 @@ class ASTWalker(NodeVisitor):
                     # replace as follows -
                     # function foo() {} -> var foo = window['foo'] = function () { }
                     fe = child.to_ecma()
-                    fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe)
-                    fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
+                    # Replace only the first (else risk removing function identifiers inside the main function)
+                    # fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
+                    # fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
+                    # NOTE: This tries to fix some issue where a function
+                    # assignment or call would throw The solution being
+                    # attempted below is to leave the function as it is but
+                    # also export it to global scope
+                    fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + child.identifier.value + ';'
                     yield [{"function": {"scope": scope, "node": child, "text": fe, "textnew": fef}}]
                 # Descend
                 for subchild in self._get_replacements(child, aliases, scope+1):
@@ -119,46 +125,63 @@ class ASTWalker(NodeVisitor):
         except Exception as e:
             print('ERROR: Threw exception in script fixer. The scripts in the crx package might not work correctly.', e)
 
-    def find_apicall(self, node, apicall, permission):
+    def find_apicall(self, node, *apicalls):
         """
         Traverses JS source and looks for hints about what APIs are being used.
-        If it finds something, it returns the "permission" argument (to be used with)
-        _add_permission. Calls _find, which will return None if nothing is found.
+        Returns the associated permission (to be used by _add_permission) if
+        found. Calls _find, which will return None if nothing is found.
         """
         debug = self._debug
-        if self._find(node, apicall):
-            return permission
-        elif debug:
-            print('No match for ' + apicall + 'found')
+        permission = {
+            'addItem': 'contextMenus',
+            'create': 'tabs',
+            'getAll': 'tabs',
+            'getFocused': 'tabs',
+            'getSelected': 'tabs',
+            'add': ('webRequest', 'webRequestBlocking'),
+            'remove': ('webRequest', 'webRequestBlocking')}
+        
+        for call in apicalls:
+            if self._find(node, call):
+                return permission[call]
+            elif debug:
+                print('No match for ' + call + ' found')
 
-    def _find(self, node=None, apicall=""):
+    def find_button(self, tree):
         """
-        _find does the real work for find_apicall. Returns True in case of a match
-        or None if nothing is found.
+        Look for opera.contexts.toolbar.addItem() so we can add the 
+        'browser_action' directive to manfest.json
         """
         debug = self._debug
-        #best guesses at an API that requires permission is being used
-        lhs_shortcut = ["menu", "block", "allow", "tabs"]
+        if self._find(tree, 'addItem', ["toolbar"]):
+            return True
+        else:
+            if debug: print('toolbar.addItem() not found.')
+
+    def _find(self, node=None, apicall="", lhs_shortcut=["menu", "block",
+                                                         "allow", "tabs"]):
+        """
+        _find does the real work for find_apicall. Optional lsh_shortcut arg
+        allows for a quick short-circuit. Returns True in case of a match or
+        None if nothing is found.
+        """
+        debug = self._debug
         found = False
 
         #lhs is probably actually a parent object or container
         def lhs_finder(node, lh_object):
             """
-            For a given node, determines if it contains a "lh_object", which should
-            be an ancestor object to an API method call.
+            For a given node, determines if it contains a "lh_object", which
+            should be an ancestor object to an API method call.
             """
-            # var is either a variable declaration or an assignment (which could be
-            # an implicit global declaration)
-            # do we need to go up the object chain until (window.)opera?
+            # var is either a VarStatement or VarDecl (which
+            # could be an implicit global declaration)
             var = node.to_ecma()
-            var_list = var.split(',')
-            for var in var_list:
-                if lh_object in var:
-                    # do something useful here, (set found to True)
-                    if debug: print('BINGO-ish', node.to_ecma())
+            if lh_object in var:
+                if debug:
+                    print('Aliased API call found (maybe)', node.to_ecma())
+                return True
 
-        #TODO: write a million tests
-        #TODO: figure out how high up we have to go, window? opera?
         try:
             for child in self.visit(node):
                 if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
@@ -171,14 +194,14 @@ class ASTWalker(NodeVisitor):
                             if debug: print('API call found (maybe):', method_call)
                             found = True
                         else:
-                            #is this crazy?
                             for child in self.visit(node):
                                 if isinstance(child, ast.VarStatement):
-                                    lhs_finder(child, lh_object)
+                                    found = lhs_finder(child, lh_object)
 
-                                elif isinstance(child, ast.Assign):
-                                    lhs_finder(child, lh_object)
+                                elif isinstance(child, ast.ExprStatement):
+                                    found = lhs_finder(child, lh_object)
+
                 if found:
                     return found
         except Exception as e:
-            print('ERROR: Exception thrown in api call finder.', e)
+            print('ERROR: Exception thrown in api call finder.', e, child.to_ecma())
