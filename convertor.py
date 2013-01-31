@@ -149,7 +149,7 @@ class Oex2Crx:
             sys.exit("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
 
 
-        if debug: 
+        if debug:
             print(("Config.xml", configStr))
         root = etree.fromstring(configStr.encode('UTF-8')) # xml.etree requires UTF-8 input
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
@@ -260,7 +260,10 @@ class Oex2Crx:
                 continue
             if debug:
                 print("Handling file: %s" % filename)
-            file_data = unicoder(oex.read(filename))
+            if re.search(r"\.(x?html?|js|json)$", filename, flags=re.I):
+                file_data = unicoder(oex.read(filename))
+            else:
+                file_data = oex.read(filename)
             self._zih_file = filename
             # for the background process file (most likely index.html)
             # we need to parse config.xml to get the correct index.html file
@@ -336,7 +339,7 @@ class Oex2Crx:
             if filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
                 resources += ('"' + filename + '",')
 
-            if ((not filename == "config.xml")):
+            if (filename != "config.xml"):
                 # Copy files from locales/en/ to root of the .crx package
                 do_copy = False
                 noloc_filename = None
@@ -827,7 +830,7 @@ xa4_detector = re.compile(r'^(?:\xA4)*$', re.X)
 
 def unicoder(string):
     '''make unicode. This method is copied from http://pastebin.com/f76609aec'''
-    
+
     try:
         if re.match(utf8_detector, string):
             if string[:3] == codecs.BOM_UTF8 : # remove any BOM from UTF-8 data
@@ -839,7 +842,7 @@ def unicoder(string):
             else:
                 return unicode(string, 'cp1252')
         return unicode(string, 'latin_1')
-        
+
     except UnicodingError:
         raise UnicodingError("still don't recognise encoding after trying do guess common english encodings")
 
