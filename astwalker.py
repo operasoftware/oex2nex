@@ -5,12 +5,14 @@ with Opera Extension shims"""
 import sys
 import re
 try:
-    import sys
     from slimit.parser import Parser
     from slimit import ast
     from slimit.visitors.nodevisitor import NodeVisitor
 except ImportError:
-    sys.exit("ERROR: Could not import slimit module\nIf the module is not installed please install it.\ne.g. by running the command 'easy_install slimit'.")
+    sys.exit("ERROR: Could not import slimit module\nIf the module is not"
+             "installed please install it.\ne.g. by running the command "
+             "'easy_install slimit'.")
+
 
 class ASTWalker(NodeVisitor):
     """
@@ -25,7 +27,8 @@ class ASTWalker(NodeVisitor):
     # var prefs = w.widget.preferences
     # var ext = o.extensions
     # Plan -
-    # - as we traverse the first level of program find if there are any aliases to window or opera or window.widget or window.opera
+    # - as we traverse the first level of program find if there are any aliases
+    #   to window or opera or window.widget or window.opera
     # - look for widget.preferences, window.widget.preferences
     # repeat this pattern for opera.contexts.toolbar
 
@@ -42,10 +45,12 @@ class ASTWalker(NodeVisitor):
                     ce = child.to_ecma()
                 else:
                     return
-                if debug: yield ['reg:', scope, child, child.to_ecma()]
+                if debug:
+                    yield ['reg:', scope, child, child.to_ecma()]
                 # The replacements need to be done at VarStatement level
                 if isinstance(child, ast.VarStatement):
-                    if debug: print('>>>>---- ast.VarStatement', child.to_ecma())
+                    if debug:
+                        print('>>>>---- ast.VarStatement', child.to_ecma())
                     ve = vef = child.to_ecma()
                     for vd in child:
                         if isinstance(vd, ast.VarDecl):
@@ -72,16 +77,22 @@ class ASTWalker(NodeVisitor):
                     if (scope == 0):
                         # the new source text
                         vef = child.to_ecma()
-                        yield [{"topvar": {"scope": scope, "node": child, "text": ve, "textnew": vef, "aliases": aliases}}]
-                    if debug: yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
+                        yield [{"topvar": {"scope": scope, "node": child,
+                                "text": ve, "textnew": vef,
+                                "aliases": aliases}}]
+                    if debug:
+                        yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
                 # assignments for widget.preferences and .toolbar
                 if isinstance(child, ast.Assign):
-                    if debug: print('>>>----> ast.Assign: ', child.to_ecma())
+                    if debug:
+                        print('>>>----> ast.Assign: ', child.to_ecma())
                     # also need to check for things like;
-                    # var prefs = widget.preferences; ...; prefs.foo = 34; (we need to convert the .foo to setItem('foo', 34)
+                    # var prefs = widget.preferences; ...; prefs.foo = 34;
+                    # (we need to convert the .foo to setItem('foo', 34)
                     for label in aliases["preferences"]:
                         if (ce.find(label) > -1):
-                            if debug: print('pref label:', label)
+                            if debug:
+                                print('pref label:', label)
                             datf = dada = daid = val = None
                             for da in child:
                                 if isinstance(da, ast.DotAccessor):
@@ -94,18 +105,23 @@ class ASTWalker(NodeVisitor):
                                     val = da.to_ecma()
                             if dada and daid and val:
                                 datf = dada + '.setItem("' + daid + '", ' + val + ');'
-                                yield [{"prefs": {"scope": scope, "node": child, "text": child.to_ecma(), "textnew" : datf, "aliases": aliases}}]
+                                yield [{"prefs": {"scope": scope,
+                                        "node": child, "text": child.to_ecma(),
+                                        "textnew": datf, "aliases": aliases}}]
                             elif debug:
                                 print("Entered preferences finder but failed to find one; code", child.to_ecma())
                             # not much chance that we would again match at the same place
                             break
                 if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
-                    if debug: print('>>>----> FunctionCall and DotAccessor: ', child.to_ecma())
+                    if debug:
+                        print('>>>----> FunctionCall and DotAccessor: ', child.to_ecma())
                     # var tb = opera.contexts.toolbar; ... ; tb.addItem(props);
                     if ('addItem' in child.identifier.to_ecma().split('.')):
-                        if debug: print('>>>----> toolbar.addItem:', child.identifier.to_ecma())
+                        if debug:
+                            print('>>>----> toolbar.addItem:', child.identifier.to_ecma())
                         # TODO: exactly what?
-                        yield [{"toolbar": {"scope": scope, "node": child, "text": child.to_ecma(), "aliases": aliases}}]
+                        yield [{"toolbar": {"scope": scope, "node": child,
+                                "text": child.to_ecma(), "aliases": aliases}}]
                 elif (scope == 0) and isinstance(child, ast.FuncDecl):
                     # replace as follows -
                     # function foo() {} -> var foo = window['foo'] = function () { }
@@ -117,13 +133,15 @@ class ASTWalker(NodeVisitor):
                     # assignment or call would throw The solution being
                     # attempted below is to leave the function as it is but
                     # also export it to global scope
-                    fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + child.identifier.value + ';'
-                    yield [{"function": {"scope": scope, "node": child, "text": fe, "textnew": fef}}]
+                    fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = ' + child.identifier.value + ';'
+                    yield [{"function": {"scope": scope, "node": child,
+                            "text": fe, "textnew": fef}}]
                 # Descend
-                for subchild in self._get_replacements(child, aliases, scope+1):
+                for subchild in self._get_replacements(child, aliases, scope + 1):
                     yield subchild
         except Exception as e:
-            print('ERROR: Threw exception in script fixer. The scripts in the crx package might not work correctly.', e)
+            print("ERROR: Threw exception in script fixer. The scripts in the"
+                  "crx package might not work correctly.", e)
 
     def find_apicall(self, node, *apicalls):
         """
@@ -140,7 +158,7 @@ class ASTWalker(NodeVisitor):
             'getSelected': 'tabs',
             'add': ('webRequest', 'webRequestBlocking'),
             'remove': ('webRequest', 'webRequestBlocking')}
-        
+
         for call in apicalls:
             if self._find(node, call):
                 return permission[call]
@@ -149,14 +167,15 @@ class ASTWalker(NodeVisitor):
 
     def find_button(self, tree):
         """
-        Look for opera.contexts.toolbar.addItem() so we can add the 
+        Look for opera.contexts.toolbar.addItem() so we can add the
         'browser_action' directive to manfest.json
         """
         debug = self._debug
         if self._find(tree, 'addItem', ["toolbar"]):
             return True
         else:
-            if debug: print('toolbar.addItem() not found.')
+            if debug:
+                print('toolbar.addItem() not found.')
 
     def _find(self, node=None, apicall="", lhs_shortcut=["menu", "block",
                                                          "allow", "tabs"]):
@@ -191,7 +210,8 @@ class ASTWalker(NodeVisitor):
                     if object_chain[-1] == apicall:
                         #object_chain looks like ['opera', 'contexts', 'toolbar', 'addItem']
                         if lh_object in lhs_shortcut:
-                            if debug: print('API call found (maybe):', method_call)
+                            if debug:
+                                print('API call found (maybe):', method_call)
                             found = True
                         else:
                             for child in self.visit(node):
