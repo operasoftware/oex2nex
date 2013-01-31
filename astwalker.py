@@ -30,7 +30,6 @@ class ASTWalker(NodeVisitor):
     # - as we traverse the first level of program find if there are any aliases
     #   to window or opera or window.widget or window.opera
     # - look for widget.preferences, window.widget.preferences
-    # repeat this pattern for opera.contexts.toolbar
 
     def __init__(self, debug=False):
         self._debug = debug
@@ -68,8 +67,6 @@ class ASTWalker(NodeVisitor):
                                     aliases["extension"].append(vd.identifier.value)
                                 elif (cie.find(".preferences") > -1):
                                     aliases["preferences"].append(vd.identifier.value)
-                                elif (cie.find(".toolbar") > -1):
-                                    aliases["toolbar"].append(vd.identifier.value)
                             # top level variable declarations
                             if (scope == 0):
                                 # export on to window object
@@ -82,7 +79,7 @@ class ASTWalker(NodeVisitor):
                                 "aliases": aliases}}]
                     if debug:
                         yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
-                # assignments for widget.preferences and .toolbar
+                # assignments for widget.preferences
                 if isinstance(child, ast.Assign):
                     if debug:
                         print('>>>----> ast.Assign: ', child.to_ecma())
@@ -112,17 +109,7 @@ class ASTWalker(NodeVisitor):
                                 print("Entered preferences finder but failed to find one; code", child.to_ecma())
                             # not much chance that we would again match at the same place
                             break
-                if isinstance(child, ast.FunctionCall) and isinstance(child.identifier, ast.DotAccessor):
-                    if debug:
-                        print('>>>----> FunctionCall and DotAccessor: ', child.to_ecma())
-                    # var tb = opera.contexts.toolbar; ... ; tb.addItem(props);
-                    if ('addItem' in child.identifier.to_ecma().split('.')):
-                        if debug:
-                            print('>>>----> toolbar.addItem:', child.identifier.to_ecma())
-                        # TODO: exactly what?
-                        yield [{"toolbar": {"scope": scope, "node": child,
-                                "text": child.to_ecma(), "aliases": aliases}}]
-                elif (scope == 0) and isinstance(child, ast.FuncDecl):
+                if (scope == 0) and isinstance(child, ast.FuncDecl):
                     # replace as follows -
                     # function foo() {} -> var foo = window['foo'] = function () { }
                     fe = child.to_ecma()

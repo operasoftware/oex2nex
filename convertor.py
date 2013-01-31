@@ -476,7 +476,7 @@ class Oex2Crx:
                 return ex
 
         walker = ASTWalker(debug)
-        aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"], "toolbar": ["opera.contexts.toolbar", "window.opera.contexts.toolbar"]}
+        aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"]}
         scriptdata = jstree.to_ecma()
         for rval in walker._get_replacements(jstree, aliases):
             # if debug: print(('walker ret:', rval))
