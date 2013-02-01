@@ -175,7 +175,7 @@ class Oex2Crx:
             if not rval:
                 rval = "No " + tag + " found in config.xml."
             elif not isinstance(rval, unicode):
-                rval = unicoder( rval ) #.encode("utf-8")
+                rval = unicoder(rval)  # .encode("utf-8")
 
             return rval
 
@@ -216,11 +216,23 @@ class Oex2Crx:
         if content is not None:
             if content.find("[@src]") is not None:
                 indexfile = content.attrib["src"]
-        icon = root.find("{http://www.w3.org/ns/widgets}icon")
-        iconfile = None
-        if icon is not None:
-            if icon.find("[@src]") is not None:
-                iconfile = icon.attrib["src"]
+        icon_elms = root.findall("{http://www.w3.org/ns/widgets}icon")
+        iconlist = []
+        if icon_elms is not None:
+            for icon in icon_elms:
+                w = icon.attrib.get("width")
+                src = icon.attrib.get("src")
+                if w:
+                    iconlist.append((w, src))
+                elif re.search(r"16|48|128", src):
+                    m = re.search(r"16|48|128", src)
+                    w = m.group(0)
+                    iconlist.append((w, src))
+                # else take the first of whatever there is
+                else:
+                    iconlist.append(("128", src))
+                    break
+        iconstore = {size: name for (size, name) in iconlist}
 
         shim_wrap = self._shim_wrap
         # parsing includes and excludes from the included scripts
@@ -403,12 +415,14 @@ class Oex2Crx:
         jenc = json.JSONEncoder()
         description = jenc.encode(description)
         name = jenc.encode(name)
+        icon_files = jenc.encode(iconstore)
 
         manifest = ""
-        manifest = '{\n"name": ' + name + ',\n"description": ' + description + ',\n"manifest_version" : 2,\n"version" : "' + version + '",\n"background":{"page":"' + indexfile + '"}'
-        if iconfile is not None:
-            # any way to include multiple icons if the oex has them?
-            manifest += ',\n"icons" : {"128" : "' + iconfile + '"}'
+        manifest = '{\n"name": ' + name
+        manifest += ',\n"description": ' + description
+        manifest += ',\n"manifest_version" : 2,\n"version" : "' + version
+        manifest += '",\n"background" : {"page" : "' + indexfile + '"}'
+        manifest += ',\n"icons" : ' + icon_files
         if has_popup:
             # Let the APIs do their job  #"default_popup" : "popup.html"}'
             manifest += ',\n"browser_action" : {}'
