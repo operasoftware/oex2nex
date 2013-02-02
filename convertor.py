@@ -357,7 +357,7 @@ class Oex2Crx:
                 # Important: ONLY ASCII in these strings, please..
                 # If script parsing failed, leave it alone
                 if isinstance(rv_scopefix, basestring):
-                    file_data = "opera.isReady(function (){\n" + rv_scopefix + "\n});\n"
+                    file_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
             elif re.search(r'\.x?html?$', filename, flags=re.I):
                 if debug:
                     print("Adding shim for any page to file %s." % filename)
@@ -393,7 +393,7 @@ class Oex2Crx:
                 print('Has injected scripts')
             # Merged injected scripts
             if merge_scripts and inj_scr_data:
-                inj_scr_data = "opera.isReady(function (){\n" + inj_scr_data + "\n});\n"
+                inj_scr_data = "opera.isReady(function(){\n" + inj_scr_data + "\n});\n"
                 crx.writestr("allscripts_injected.js", inj_scr_data.encode("utf-8"))
             # add injected script shim if we have any includes or excludes
             try:
@@ -642,9 +642,9 @@ class Oex2Crx:
                         if script_data:
                             rv_scopefix = self._update_scopes(script_data)
                             if isinstance(rv_scopefix, basestring):
-                                script_data = "opera.isReady(function (){\n" + rv_scopefix + "\n});\n"
+                                script_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
                             else:
-                                script_data = "opera.isReady(function (){\n" + script_data + "\n});\n"
+                                script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
                             script_count += 1
                             iscr = doc.createElement("script")
                             iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
@@ -670,7 +670,7 @@ class Oex2Crx:
                 crx.writestr(oex_bg_shim, bgdata)
             if prefs:
                 (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
-                pref_sdata = "opera.isReady(function (){\n" + pref_sdata + "\n});\n"
+                pref_sdata = "opera.isReady(function(){\n" + pref_sdata + "\n});\n"
                 crx.writestr(pref_src, pref_sdata)
         # add the 'anypage.shim' to all content we receive here:
         else:
@@ -722,7 +722,7 @@ class Oex2Crx:
             # Some scripts might not parse, so don't try to wrap them.
             # just use the original data
             if isinstance(rval, basestring):
-                scriptdata = "opera.isReady(function (){\n" + rval + "\n});\n"
+                scriptdata = "opera.isReady(function(){\n" + rval + "\n});\n"
             crx.writestr(oscr, scriptdata)
         return serializer.render(domwalker(doc))
 
