@@ -138,7 +138,6 @@ class ASTWalker(NodeVisitor):
         """
         debug = self._debug
         permission = {
-            'addItem': 'contextMenus',
             'create': 'tabs',
             'getAll': 'tabs',
             'getFocused': 'tabs',

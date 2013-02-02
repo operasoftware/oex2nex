@@ -44,7 +44,7 @@ oex_anypage_shim = shim_dir + "operaextensions_popup.js"
 oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
 oex_resource_loader = shim_dir + "popup_resourceloader"
 # TODO: add a smart way of adding these following default permissions
-permissions = ["http://*/*", "https://*/*", "storage", "cookies"]
+permissions = ["http://*/*", "https://*/*", "storage"]
 has_button = False
 
 #Header for Chrome 24(?) compatible .crx package
@@ -531,7 +531,6 @@ class Oex2Crx:
         # defining this in here so we can share the jstree and walker instances
         def find_permissions(tree):
             """Looks for possible permissions to be added to manifest.json"""
-            self._add_permission(walker.find_apicall(jstree, 'addItem'))
             self._add_permission(walker.find_apicall(jstree, 'create',
                                                              'getAll',
                                                              'getFocused',
