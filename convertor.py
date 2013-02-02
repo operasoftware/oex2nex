@@ -114,6 +114,19 @@ class Oex2Crx:
             return list(st)
         return ", ".join('"' + perm + '"' for perm in uniquify(permissions))
 
+    def _merge_features(self, featurenames):
+        """
+        Merge the permissions associated with the featurenames list into
+        the permissions list
+        """
+        dict = {
+            "opera:contextmenus": "contextMenus",
+            "opera:sharecookies": "cookies"
+        }
+        for feature in featurenames:
+            if feature in dict:
+                permissions.append(dict[feature])
+
     def _normalize_version(self, version):
         """Attemps to clean up existing config.xml @version values and
         validate them against the CRX requirements (1-4 dot-separated integers
@@ -197,10 +210,13 @@ class Oex2Crx:
                 accessorigins.append([acs.attrib["origin"], "false"])
         if debug:
             print(("Access origins:", accessorigins))
+        has_features = False
         featurelist = root.findall("{http://www.w3.org/ns/widgets}feature")
         featurenames = []
         for feat in featurelist:
             featurenames.append(feat.attrib["name"])
+        if len(featurenames):
+            has_features = True
         if debug:
             print(("Feature names: ", featurenames))
         # Store preference data and add them to the index doc using a script
@@ -448,6 +464,10 @@ class Oex2Crx:
             if debug:
                 print(("Loadable resources:", resources))
             manifest += ',\n"web_accessible_resources" : [' + resources + ']'
+
+        # if we have features, merge those into the permissions list
+        if has_features:
+            self._merge_features(featurenames)
 
         manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
         manifest += '\n}\n'
