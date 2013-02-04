@@ -119,13 +119,13 @@ class Oex2Crx:
         Merge the permissions associated with the featurenames list into
         the permissions list
         """
-        dict = {
+        feature_map = {
             "opera:contextmenus": "contextMenus",
             "opera:sharecookies": "cookies"
         }
         for feature in featurenames:
-            if feature in dict:
-                permissions.append(dict[feature])
+            if feature in feature_map:
+                permissions.append(feature_map[feature])
 
     def _normalize_version(self, version):
         """Attemps to clean up existing config.xml @version values and
