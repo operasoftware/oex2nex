@@ -433,7 +433,6 @@ class Oex2Crx:
         name = jenc.encode(name)
         icon_files = jenc.encode(iconstore)
 
-        manifest = ""
         manifest = '{\n"name": ' + name
         manifest += ',\n"description": ' + description
         manifest += ',\n"manifest_version" : 2,\n"version" : "' + version
