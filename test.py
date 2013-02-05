@@ -46,10 +46,10 @@ class TestAPIFinder(unittest.TestCase):
     def test_permission(self):
         script = """
         var sendToKaleidos = opera.contexts.menu.createItem(foo)
-        opera.contexts.menu.addItem(sendToKaleidos);
+        opera.contexts.tabs.getAll();
         """
         self.assertEqual(self.walker.find_apicall(
-            self.jstree.parse(script), 'addItem'), 'contextMenus')
+            self.jstree.parse(script), 'getAll'), 'tabs')
 
     def test_finder_aliased(self):
         script = """
@@ -116,11 +116,11 @@ class TestAPIFinder(unittest.TestCase):
 
     def test_permission_aliased(self):
         script = """
-        var mn = opera.contexts.menu;
-        mn.addItem(button);
+        var tb = opera.contexts.tabs;
+        tb.create(tabs);
         """
         self.assertEqual(self.walker.find_apicall(
-            self.jstree.parse(script), 'addItem'), 'contextMenus')
+            self.jstree.parse(script), 'create'), 'tabs')
 
     def test_permission_aliased2(self):
         script = """
@@ -146,31 +146,31 @@ class TestAPIFinder(unittest.TestCase):
 
     def test_permission_aliased5(self):
         script = """
-        var mn = opera.contexts.menu;
-        mn.addItem(button);
+        var tbs = opera.contexts.tabs;
+        tbs.getFocused();
         """
         self.assertEqual(self.walker.find_apicall(
-            self.jstree.parse(script), 'addItem'), 'contextMenus')
+            self.jstree.parse(script), 'getFocused'), 'tabs')
 
     def test_finder_multi_aliased(self):
         script = """
         var o = opera;
         c = o.contexts,
-        mn = c.menu;
-        mn.addItem(button);
+        tbs = c.tabs;
+        tbs.getFocused();
         """
         self.assertTrue(self.walker._find(
-            self.jstree.parse(script), 'addItem'))
+            self.jstree.parse(script), 'getFocused'))
 
     def test_permission_multi_aliased(self):
         script = """
         var o = opera;
         c = o.contexts,
-        mn = c.menu;
-        mn.addItem(button);
+        tb = c.tabs;
+        tb.getSelected();
         """
         self.assertEqual(self.walker.find_apicall(
-            self.jstree.parse(script), 'addItem'), 'contextMenus')
+            self.jstree.parse(script), 'getSelected'), 'tabs')
 
 
 class TestBrowserAction(unittest.TestCase):
