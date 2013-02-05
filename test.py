@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
 import unittest
+import subprocess
+import os
+import zipfile
 from slimit.parser import Parser as JSParser
 from astwalker import *
+from convertor import Oex2Crx
 #TODO: test for false positives
 
 
@@ -312,6 +316,32 @@ class TestNormVersion(unittest.TestCase):
         self.assertEqual(self.normalize_version(version), "1.0.0.1")
 
 
+class TestCRX(unittest.TestCase):
+    def setUp(self):
+        subprocess.call("python convertor.py -x fixtures/manifest-test.oex fixtures/converted/manifest-test",
+                        shell=True)
+
+    def tearDown(self):
+        subprocess.call("rm -r fixtures/converted/*", shell=True)
+
+    def test_crx_exists(self):
+        self.assertTrue(os.path.isfile("fixtures/converted/manifest-test.crx"))
+
+    def test_crx_files(self):
+        crx = zipfile.ZipFile("fixtures/converted/manifest-test.crx", "r")
+        # we expect these files to get copied over
+        expected = ["manifest.json", "hello.png", "popup.html", "index.html",
+                    "oex_shim/operaextensions_popup.js",
+                    "oex_shim/popup_resourceloader.html",
+                    "oex_shim/popup_resourceloader.js",
+                    "oex_shim/operaextensions_background.js",
+                    "inline_script_index_1.js"]
+        for file in expected:
+            self.assertIn(file, crx.namelist())
+        #config.xml shouldn't get copied over
+        self.assertNotIn("config.xml", crx.namelist())
+
+
 def APIFinder_suite():
     return unittest.TestLoader().loadTestsFromTestCase(TestAPIFinder)
 
@@ -324,8 +354,13 @@ def normalizeVersion_suite():
     return unittest.TestLoader().loadTestsFromTestCase(TestNormVersion)
 
 
+def crx_suite():
+    return unittest.TestLoader().loadTestsFromTestCase(TestCRX)
+
+
 if __name__ == '__main__':
         runner = unittest.TextTestRunner()
         runner.run(APIFinder_suite())
         runner.run(browserAction_suite())
         runner.run(normalizeVersion_suite())
+        runner.run(crx_suite())
