@@ -860,13 +860,15 @@ utf8_detector = re.compile(r"""^(?:
 cp1252_detector = re.compile(r'^(?:[\x80-\xBF])*$', re.X)
 xa4_detector = re.compile(r'^(?:\xA4)*$', re.X)
 
+
 def unicoder(string):
     '''make unicode. This method is copied from http://pastebin.com/f76609aec'''
 
     try:
         if re.match(utf8_detector, string):
-            if string[:3] == codecs.BOM_UTF8 : # remove any BOM from UTF-8 data
-                string= string[3:]
+            # remove any BOM from UTF-8 data
+            if string[:3] == codecs.BOM_UTF8:
+                string = string[3:]
             return string.decode('utf-8')
         if re.match(cp1252_detector, string):
             if re.match(xa4_detector, string):
@@ -877,6 +879,7 @@ def unicoder(string):
 
     except UnicodingError:
         raise UnicodingError("still don't recognise encoding after trying do guess common english encodings")
+
 
 def main(args=None):
     import argparse
