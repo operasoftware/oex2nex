@@ -19,6 +19,8 @@
   var opera = global.opera || new Opera();
   
   var manifest = chrome.app.getDetails(); // null in injected scripts / popups
+  
+  navigator.browserLanguage=navigator.language; //Opera defines both, some extensions use the former
 
   var isReady = false;
 
@@ -690,7 +692,7 @@ var OMessagePort = function( isBackground ) {
 
     // Fire 'connect' event once we have all the initial listeners setup on the page
     // so we don't miss any .onconnect call from the extension page
-    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
+    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort, "origin": "" }) ]);
 
   }
 
@@ -775,7 +777,7 @@ var OBackgroundMessagePort = function() {
 
     }.bind(this) );
 
-    this.dispatchEvent( new OEvent('connect', { "source": _remotePort }) );
+    this.dispatchEvent( new OEvent('connect', { "source": _remotePort, "origin": "" }) );
 
   }.bind(this));
 
@@ -3275,11 +3277,9 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -
 
 }
 
-var ToolbarContext = function( isBackground ) {
+var ToolbarContext = function() {
 
   OEventTarget.call( this );
-  
-  this.isBackground = !!isBackground;
   
   this.length = 0;
 
@@ -3300,46 +3300,6 @@ var ToolbarContext = function( isBackground ) {
   }
 
   chrome.browserAction.onClicked.addListener(clickEventHandler.bind(this));
-  
-  if( this.isBackground ) {
-    
-    OEX.addEventListener('controlmessage', function(msg) {
-
-      if( !msg.data || !msg.data.action ) {
-        return;
-      }
-
-      if(msg.data.action == '___O_setup_toolbar_context_REQUEST') {
-
-        if( !this[0] ) {
-          
-          msg.source.postMessage({
-            action: '___O_setup_toolbar_context_RESPONSE',
-            data: {
-              toolbarUIItem_obj: undefined
-            }
-          });
-          
-        } else {
-          
-          var toolbarItemProps = Object.create( this[0].properties );
-          toolbarItemProps.badge = toolbarItemProps.badge.properties;
-          toolbarItemProps.popup = toolbarItemProps.popup.properties;
-
-          msg.source.postMessage({
-            action: '___O_setup_toolbar_context_RESPONSE',
-            data: {
-              toolbarUIItem_obj: toolbarItemProps
-            }
-          });
-          
-        }
-
-      }
-
-    }.bind(this), false);
-  
-  }
 
 };
 
@@ -3740,7 +3700,7 @@ ToolbarUIItem.prototype.__defineGetter__("badge", function() {
 
 if(manifest && manifest.browser_action !== undefined && manifest.browser_action !== null ) {
 
-  OEC.toolbar = OEC.toolbar || new ToolbarContext(true);
+  OEC.toolbar = OEC.toolbar || new ToolbarContext();
 
 }
 var MenuEvent = function(type,args,target){
@@ -15014,3 +14974,24 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('webRequest'
   global.opera = opera;
 
 })( window );
+// Rewrite in-line event handlers (eg. <input ... onclick=""> for a sub-set of common standard events)
+
+document.addEventListener('DOMContentLoaded', function(e) {
+  
+  var selectors = ['load', 'click', 'mouseover', 'mouseout', 'keydown', 'keypress', 'keyup', 'blur', 'focus'];
+
+  for(var i = 0, l = selectors.length; i < l; i++) {
+    var els = document.querySelectorAll('[on' + selectors[i] + ']');
+    for(var j = 0, k = els.length; j < k; j++) {
+      var fn = new Function('e', els[j].getAttribute('on' + selectors[i]));
+      var target = els[j];
+      if(selectors[i] === 'load' && els[j] === document.body) {
+        target = window;
+      }
+      
+      els[j].removeAttribute('on' + selectors[i]);
+      target.addEventListener(selectors[i], fn, true);
+    }
+  }
+  
+}, false);

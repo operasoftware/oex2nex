@@ -19,6 +19,8 @@
   var opera = global.opera || new Opera();
   
   var manifest = chrome.app.getDetails(); // null in injected scripts / popups
+  
+  navigator.browserLanguage=navigator.language; //Opera defines both, some extensions use the former
 
   var isReady = false;
 
@@ -41,9 +43,6 @@
 
 // Used to trigger opera.isReady() functions
 var deferredComponentsLoadStatus = {
-  'WIDGET_API_LOADED': false,
-  'WIDGET_PREFERENCES_LOADED': false,
-  'TOOLBAR_CONTEXT_LOADED': false
   // ...etc
 };
 
@@ -697,7 +696,7 @@ var OMessagePort = function( isBackground ) {
 
     // Fire 'connect' event once we have all the initial listeners setup on the page
     // so we don't miss any .onconnect call from the extension page
-    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
+    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort, "origin": "" }) ]);
 
   }
 
@@ -780,722 +779,39 @@ OperaExtension.prototype.getFile = function(path) {
   return response;
 };
 
-var OStorageProxy = function () {
+// Add Widget API via the bgProcess
+global.widget = global.widget || OEX.bgProcess.widget;
 
-  // All attributes and methods defined in this class must be non-enumerable,
-  // hence the structure of this class and the use of Object.defineProperty.
+if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -1) {
 
-  Object.defineProperty(this, "length", { value : 0, writable:true });
+  OEX.windows = OEX.windows || OEX.bgProcess.opera.extension.windows;
 
-  Object.defineProperty(OStorageProxy.prototype, "getItem", {
-    value: function( key ) {
-      var val = this[key];
-      return val === undefined ? null : val;
-    }
-  });
+}
 
-  Object.defineProperty(OStorageProxy.prototype, "key", {
-    value: function( i ) {
-      var size = 0;
-      for (var i in this) {
-        if( this.hasOwnProperty( i ) ) {
-          if (size == i) return i;
-          size++;
-        }
-      }
-      return null;
-    }
-  });
+if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -1) {
 
-  Object.defineProperty(OStorageProxy.prototype, "removeItem", {
-    value: function( key, proxiedChange ) {
-      if( this.hasOwnProperty( key ) ) {
-        delete this[key];
-        this.length--;
+  OEX.tabs = OEX.tabs || OEX.bgProcess.opera.extension.tabs;
 
-        if( !proxiedChange ) {
-          // Send control message to remove item from background store
-          OEX.postMessage({
-            "action": "___O_widgetPreferences_removeItem_REQUEST",
-            "data": {
-              "key": key
-            }
-          });
-        }
-      }
-    }
-  });
+}
 
-  Object.defineProperty(OStorageProxy.prototype, "setItem", {
-    value: function( key, value, proxiedChange ) {
-      if( !this[key] ) {
-        this.length++;
-      }
-      this[key] = value;
+if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -1) {
 
-      if( !proxiedChange ) {
-        // Send control message to set item in background store
-        OEX.postMessage({
-          "action": "___O_widgetPreferences_setItem_REQUEST",
-          "data": {
-            "key": key,
-            "val": value
-          }
-        });
-      }
-    }
-  });
+  OEX.tabGroups = OEX.tabGroups || OEX.bgProcess.opera.extension.tabGroups;
 
-  Object.defineProperty(OStorageProxy.prototype, "clear", {
-    value: function( proxiedChange ) {
-      for(var i in this) {
-        if( this.hasOwnProperty( i ) ) {
-          delete this[ i ];
-        }
-      }
-      this.length = 0;
-
-      if( !proxiedChange ) {
-        // Send control message to clear all items from background store
-        OEX.postMessage({
-          "action": "___O_widgetPreferences_clear_REQUEST"
-        });
-      }
-    }
-  });
-
-};
-
-// Inherit the standard Storage prototype
-OStorageProxy.prototype = Object.create( Storage.prototype );
-
-var OWidgetObjProxy = function() {
-
-  OEventTarget.call(this);
-
-  this.properties = manifest || {};
-  
-  // LocalStorage shim
-  this._preferences = new OStorageProxy();
-  this._preferencesSet = {};
-
-  OEX.addEventListener('controlmessage', function( msg ) {
-
-    if( !msg.data || !msg.data.action ) {
-      return;
-    }
-
-    switch( msg.data.action ) {
-
-      // Set up all storage properties
-      case '___O_widget_setup_RESPONSE':
-
-        // Copy properties
-        for(var i in msg.data.attrs) {
-          this.properties[ i ] = msg.data.attrs[ i ];
-        }
-
-        // Set WIDGET_API_LOADED feature to LOADED
-        deferredComponentsLoadStatus['WIDGET_API_LOADED'] = true;
-
-        // Copy initial _preferences items to storage proxy object
-        if(msg.data._prefs) {
-          var size = 0;
-          for(var i in msg.data._prefs) {
-            this._preferences[ i ] = msg.data._prefs[ i ];
-            this._preferences.length++;
-          }
-        }
-
-        // Set WIDGET_PREFERENCES_LOADED feature to LOADED
-        deferredComponentsLoadStatus['WIDGET_PREFERENCES_LOADED'] = true;
-
-        break;
-
-      // Update a storage item
-      case '___O_widgetPreferences_setItem_RESPONSE':
-
-        this._preferences.setItem( msg.data.data.key, msg.data.data.val, true );
-
-        break;
-
-      // Remove a storage item
-      case '___O_widgetPreferences_removeItem_RESPONSE':
-
-        this._preferences.removeItem( msg.data.data.key, true );
-
-        break;
-
-      // Clear all storage items
-      case '___O_widgetPreferences_clear_RESPONSE':
-
-        this._preferences.clear( true );
-
-        break;
-
-      default:
-        break;
-    }
-
-  }.bind(this), false);
-
-  // Setup widget API via proxy
-  OEX.postMessage({
-    "action": "___O_widget_setup_REQUEST"
-  });
-
-  // When the page unloads, take all items that have been
-  // added with preference.blah or preferences['blah']
-  // (instead of the catachable .setItem) and push these
-  // preferences to the background script
-  global.addEventListener('beforeunload', function() {
-    // TODO implement widget.preferences page unload behavior
-  }, false);
-
-};
-
-OWidgetObjProxy.prototype = Object.create( OEventTarget.prototype );
-
-OWidgetObjProxy.prototype.__defineGetter__('name', function() {
-  return this.properties.name || "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('shortName', function() {
-  return this.properties.name ? this.properties.name.short || "" : "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('id', function() {
-  return this.properties.id || "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('description', function() {
-  return this.properties.description || "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('author', function() {
-  return this.properties.author || "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('authorHref', function() {
-  return this.properties.author ? this.properties.author.href || "" : "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('authorEmail', function() {
-  return this.properties.author ? this.properties.author.email || "" : "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('version', function() {
-  return this.properties.version || "";
-});
-
-OWidgetObjProxy.prototype.__defineGetter__('preferences', function() {
-  return this._preferences;
-});
-
-// Add Widget API directly to global window
-global.widget = global.widget || new OWidgetObjProxy();
-
-var ToolbarContext = function( isBackground ) {
-
-  OEventTarget.call( this );
-  
-  this.isBackground = !!isBackground;
-  
-  this.length = 0;
-
-  // Unfortunately, click events only fire if a popup is not supplied
-  // to a registered browser action in Chromium :(
-  // http://stackoverflow.com/questions/1938356/chrome-browser-action-click-not-working
-  //
-  // TODO also invoke clickEventHandler function when a popup page loads
-  function clickEventHandler(_tab) {
-
-    if( this[ 0 ] ) {
-      this[ 0 ].dispatchEvent( new OEvent('click', {}) );
-    }
-
-    // Fire event also on ToolbarContext API stub
-    this.dispatchEvent( new OEvent('click', {}) );
-
-  }
-
-  chrome.browserAction.onClicked.addListener(clickEventHandler.bind(this));
-  
-  if( this.isBackground ) {
-    
-    OEX.addEventListener('controlmessage', function(msg) {
-
-      if( !msg.data || !msg.data.action ) {
-        return;
-      }
-
-      if(msg.data.action == '___O_setup_toolbar_context_REQUEST') {
-
-        if( !this[0] ) {
-          
-          msg.source.postMessage({
-            action: '___O_setup_toolbar_context_RESPONSE',
-            data: {
-              toolbarUIItem_obj: undefined
-            }
-          });
-          
-        } else {
-          
-          var toolbarItemProps = Object.create( this[0].properties );
-          toolbarItemProps.badge = toolbarItemProps.badge.properties;
-          toolbarItemProps.popup = toolbarItemProps.popup.properties;
-
-          msg.source.postMessage({
-            action: '___O_setup_toolbar_context_RESPONSE',
-            data: {
-              toolbarUIItem_obj: toolbarItemProps
-            }
-          });
-          
-        }
-
-      }
-
-    }.bind(this), false);
-  
-  }
-
-};
-
-ToolbarContext.prototype = Object.create( OEventTarget.prototype );
-
-ToolbarContext.prototype.createItem = function( toolbarUIItemProperties ) {
-  return new ToolbarUIItem( toolbarUIItemProperties );
-};
-
-ToolbarContext.prototype.addItem = function( toolbarUIItem ) {
-
-  if( !toolbarUIItem || !toolbarUIItem instanceof ToolbarUIItem ) {
-    return;
-  }
-
-  this[ 0 ] = toolbarUIItem;
-  this.length = 1;
-
-  toolbarUIItem.resolve(true);
-  toolbarUIItem.apply();
-
-  toolbarUIItem.badge.resolve(true);
-  toolbarUIItem.badge.apply();
-
-  toolbarUIItem.popup.resolve(true);
-  toolbarUIItem.popup.apply();
-
-};
-
-ToolbarContext.prototype.removeItem = function( toolbarUIItem ) {
-
-  if( !toolbarUIItem || !toolbarUIItem instanceof ToolbarUIItem ) {
-    return;
-  }
-
-  if( this[ 0 ] && this[ 0 ] === toolbarUIItem ) {
-
-    delete this[ 0 ];
-    this.length = 0;
-
-    // Disable the toolbar button
-    chrome.browserAction.disable();
-
-    toolbarUIItem.dispatchEvent( new OEvent('remove', {}) );
-
-    // Fire event on self
-    this.dispatchEvent( new OEvent('remove', {}) );
-
-  }
-
-};
-
-var ToolbarBadge = function( properties ) {
-
-  OPromise.call( this );
-
-  this.properties = {};
-
-  // Set provided properties through object prototype setter functions
-  this.properties.textContent = properties.textContent ? "" + properties.textContent : properties.textContent;
-  this.properties.backgroundColor = complexColorToHex(properties.backgroundColor);
-  this.properties.color = complexColorToHex(properties.color);
-  this.properties.display = String(properties.display).toLowerCase() === 'none' ? 'none' : 'block';
-};
-
-ToolbarBadge.prototype = Object.create( OPromise.prototype );
-
-ToolbarBadge.prototype.apply = function() {
-
-  chrome.browserAction.setBadgeBackgroundColor({ "color": (this.backgroundColor || "#f00") });
-
-  if( this.display === "block" ) {
-    chrome.browserAction.setBadgeText({ "text": this.textContent || "" });
-  } else {
-    chrome.browserAction.setBadgeText({ "text": "" });
-  }
-
-};
-
-// API
-
-ToolbarBadge.prototype.__defineGetter__("textContent", function() {
-  return this.properties.textContent;
-});
-
-ToolbarBadge.prototype.__defineSetter__("textContent", function( val ) {
-  this.properties.textContent = "" + val;
-  if( this.properties.display === "block" ) {
-    Queue.enqueue(this, function(done) {
-
-      chrome.browserAction.setBadgeText({ "text": ("" + val) });
-
-      done();
-
-    }.bind(this));
-  }
-});
-
-ToolbarBadge.prototype.__defineGetter__("backgroundColor", function() {
-  return this.properties.backgroundColor;
-});
-
-ToolbarBadge.prototype.__defineSetter__("backgroundColor", function( val ) {
-  this.properties.backgroundColor = complexColorToHex(val);
-
-  Queue.enqueue(this, function(done) {
-
-    chrome.browserAction.setBadgeBackgroundColor({ "color": this.properties.backgroundColor });
-
-    done();
-
-  }.bind(this));
-});
-
-ToolbarBadge.prototype.__defineGetter__("color", function() {
-  return this.properties.color;
-});
-
-ToolbarBadge.prototype.__defineSetter__("color", function( val ) {
-  this.properties.color = complexColorToHex(val);
-  // not implemented in chromium
-});
-
-ToolbarBadge.prototype.__defineGetter__("display", function() {
-  return this.properties.display;
-});
-
-ToolbarBadge.prototype.__defineSetter__("display", function( val ) {
-    if(("" + val).toLowerCase() === "none")  {
-	this.properties.display = "none";
-	Queue.enqueue(this, function(done) {
-
-	    chrome.browserAction.setBadgeText({ "text": "" });
-
-	    done();
-	}.bind(this));
-    }
-
-    else {
-	this.properties.display = "block";
-	Queue.enqueue(this, function(done) {
-
-	chrome.browserAction.setBadgeText({ "text": this.properties.textContent });
-
-      done();
-
-    }.bind(this));
-  }
-});
-
-var ToolbarPopup = function( properties ) {
-
-	OPromise.call( this );
-
-	this.properties = {
-	  href: "",
-	  width: 300,
-	  height: 300
-	};
-	
-	// internal properties
-	this.isExternalHref = false;
-	
-	this.href = properties.href;
-	this.width = properties.width;
-	this.height = properties.height;
-	
-	this.applyHrefVal = function() {
-		// If href points to a http or https resource we need to load it via an iframe
-		if(this.isExternalHref === true) {
-			return "/oex_shim/popup_resourceloader.html?href=" + global.btoa(this.properties.href) +
-              "&w=" + this.properties.width + "&h=" + this.properties.height;
-		}
-		
-		return this.properties.href + (this.properties.href.indexOf('?') > 0 ? '&' : '?' ) + 
-		        "w=" + this.properties.width + "&h=" + this.properties.height;
-	};
-
-};
-
-ToolbarPopup.prototype = Object.create( OPromise.prototype );
-
-ToolbarPopup.prototype.apply = function() {
-  
-  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
-
-	  chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
-	
-  } else {
-    
-    chrome.browserAction.setPopup({ "popup": "" });
-    
-  }
-
-};
-
-// API
-
-ToolbarPopup.prototype.__defineGetter__("href", function() {
-	return this.properties.href;
-});
-
-ToolbarPopup.prototype.__defineSetter__("href", function( val ) {
-	val = val + ""; // force to type string
-	
-	// Check if we have an external href path
-	if(val.match(/^(https?:\/\/|data:)/)) {
-		this.isExternalHref = true;
-	} else {
-		this.isExternalHref = false;
-	}
-	
-	this.properties.href = val;
-
-  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
-
-  	Queue.enqueue(this, function(done) {
-
-  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
-
-  		done();
-
-  	}.bind(this));
-	
-  } else {
-
-    chrome.browserAction.setPopup({ "popup": "" });
-
-  }
-});
-
-ToolbarPopup.prototype.__defineGetter__("width", function() {
-	return this.properties.width;
-});
-
-ToolbarPopup.prototype.__defineSetter__("width", function( val ) {
-	val = (val + "").replace(/\D/g, '');
-	
-	if(val == '') {
-		this.properties.width = 300; // default width
-	} else {
-		this.properties.width = val < 800 ? val : 800; // enforce max width
-	}
-	
-  if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
-
-  	Queue.enqueue(this, function(done) {
-
-  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
-
-  		done();
-
-  	}.bind(this));
-	
-  } else {
-
-    chrome.browserAction.setPopup({ "popup": "" });
-
-  }
-});
-
-ToolbarPopup.prototype.__defineGetter__("height", function() {
-	return this.properties.height;
-});
-
-ToolbarPopup.prototype.__defineSetter__("height", function( val ) {
-	val = (val + "").replace(/\D/g, '');
-	
-	if(val == '') {
-		this.properties.height = 300; // default height
-	} else {
-	  this.properties.height = val < 600 ? val : 600; // enforce max height
-	}
-	
-	if(this.properties.href && this.properties.href !== "undefined" && this.properties.href !== "null" && this.properties.href !== "") {
-
-  	Queue.enqueue(this, function(done) {
-
-  		chrome.browserAction.setPopup({ "popup": this.applyHrefVal() });
-
-  		done();
-
-  	}.bind(this));
-	
-  } else {
-
-    chrome.browserAction.setPopup({ "popup": "" });
-
-  }
-});
-
-var ToolbarUIItem = function( properties ) {
-
-  OPromise.call( this );
-
-  this.properties = {};
-
-  this.properties.disabled = properties.disabled || false;
-  this.properties.title = properties.title || "";
-  this.properties.icon = properties.icon || "";
-  this.properties.popup = new ToolbarPopup( properties.popup || {} );
-  this.properties.badge = new ToolbarBadge( properties.badge || {} );
-  if(properties.onclick){this.onclick = properties.onclick;}
-  if(properties.onremove){this.onremove = properties.onremove;}
-
-};
-
-ToolbarUIItem.prototype = Object.create( OPromise.prototype );
-
-ToolbarUIItem.prototype.apply = function() {
-
-  // Apply title property
-  chrome.browserAction.setTitle({ "title": this.title });
-
-  // Apply icon property
-  if(this.icon) {
-    chrome.browserAction.setIcon({ "path": this.icon });
-  } 
-  
-  // Apply disabled property
-  if( this.disabled === true ) {
-    chrome.browserAction.disable();
-  } else {
-    chrome.browserAction.enable();
-  }
-
-};
-
-// API
-
-ToolbarUIItem.prototype.__defineGetter__("disabled", function() {
-  return this.properties.disabled;
-});
-
-ToolbarUIItem.prototype.__defineSetter__("disabled", function( val ) {
-  if( this.properties.disabled !== val ) {
-    if( val === true || val === "true" || val === 1 || val === "1" ) {
-      this.properties.disabled = true;
-      Queue.enqueue(this, function(done) {
-
-        chrome.browserAction.disable();
-
-        done();
-
-      }.bind(this));
-    } else {
-      this.properties.disabled = false;
-      Queue.enqueue(this, function(done) {
-
-        chrome.browserAction.enable();
-
-        done();
-
-      }.bind(this));
-    }
-  }
-});
-
-ToolbarUIItem.prototype.__defineGetter__("title", function() {
-  return this.properties.title;
-});
-
-ToolbarUIItem.prototype.__defineSetter__("title", function( val ) {
-  this.properties.title = "" + val;
-
-  Queue.enqueue(this, function(done) {
-
-    chrome.browserAction.setTitle({ "title": this.title });
-
-    done();
-
-  }.bind(this));
-});
-
-ToolbarUIItem.prototype.__defineGetter__("icon", function() {
-  return this.properties.icon;
-});
-
-ToolbarUIItem.prototype.__defineSetter__("icon", function( val ) {
-  this.properties.icon = "" + val;
-
-  Queue.enqueue(this, function(done) {
-
-    chrome.browserAction.setIcon({ "path": this.icon });
-
-    done();
-
-  }.bind(this));
-});
-
-ToolbarUIItem.prototype.__defineGetter__("popup", function() {
-  return this.properties.popup;
-});
-
-ToolbarUIItem.prototype.__defineGetter__("badge", function() {
-  return this.properties.badge;
-});
-
-var ToolbarContextProxy = function() {
-
-  ToolbarContext.call( this, false );
-  
-  // Set up the current toolbarUIItem from the background process, if any
-  OEX.addEventListener('controlmessage', function(msg) {
-
-    if( !msg.data || !msg.data.action ) {
-      return;
-    }
-
-    if( msg.data.action == '___O_setup_toolbar_context_RESPONSE' ) {
-
-      if(msg.data.data.toolbarUIItem_obj !== undefined && msg.data.data.toolbarUIItem_obj !== null) {
-        // Setup the toolbarUIItem object
-        this[0] = new ToolbarUIItem( msg.data.data.toolbarUIItem_obj );
-        this.length = 1;
-      }
-
-      // Set TOOLBAR_CONTEXT_LOADED feature to LOADED
-      deferredComponentsLoadStatus['TOOLBAR_CONTEXT_LOADED'] = true;
-
-    }
-
-  }.bind(this), false);
-
-  OEX.postMessage({
-    action: '___O_setup_toolbar_context_REQUEST',
-    data: {}
-  });
-
-};
-
-ToolbarContextProxy.prototype = Object.create( ToolbarContext.prototype );
+}
 
 if(manifest && manifest.browser_action !== undefined && manifest.browser_action !== null ) {
 
-  OEC.toolbar = OEC.toolbar || new ToolbarContextProxy();
+  OEC.toolbar = OEC.toolbar || OEX.bgProcess.opera.contexts.toolbar;
+
+}
+
+if(manifest && manifest.permissions && manifest.permissions.indexOf('contextMenus')!=-1){
+
+  global.MenuItem = OEX.bgProcess.MenuItem;
+  global.MenuContext = OEX.bgProcess.MenuContext;
+
+  OEC.menu = OEC.menu || OEX.bgProcess.opera.contexts.menu;
 
 }
 
@@ -1742,16 +1058,40 @@ opera.isReady(function() {
     return results == null ? "" : window.decodeURIComponent(results[1].replace(/\+/g, " "));
   }
 
-  var w = getParam('w'), h = getParam('h');
-  if(w !== "") {
-    document.body.style.minWidth = w.replace(/\D/g,'') + "px";
-  } else {
-    document.body.style.minWidth = "300px"; // default width
-  }
-  if(h !== "") {
-    document.body.style.minHeight = h.replace(/\D/g,'') + "px";
-  } else {
-    document.body.style.minHeight = "300px"; // default height
-  }
+  window.addEventListener('DOMContentLoaded', function() {
+    var w = getParam('w'), h = getParam('h');
+    if(w !== "") {
+      document.body.style.minWidth = w.replace(/\D/g,'') + "px";
+    } else {
+      document.body.style.minWidth = "300px"; // default width
+    }
+    if(h !== "") {
+      document.body.style.minHeight = h.replace(/\D/g,'') + "px";
+    } else {
+      document.body.style.minHeight = "300px"; // default height
+    }
+  }, false);
 
 });
+
+// Rewrite in-line event handlers (eg. <input ... onclick=""> for a sub-set of common standard events)
+
+document.addEventListener('DOMContentLoaded', function(e) {
+  
+  var selectors = ['load', 'click', 'mouseover', 'mouseout', 'keydown', 'keypress', 'keyup', 'blur', 'focus'];
+
+  for(var i = 0, l = selectors.length; i < l; i++) {
+    var els = document.querySelectorAll('[on' + selectors[i] + ']');
+    for(var j = 0, k = els.length; j < k; j++) {
+      var fn = new Function('e', els[j].getAttribute('on' + selectors[i]));
+      var target = els[j];
+      if(selectors[i] === 'load' && els[j] === document.body) {
+        target = window;
+      }
+      
+      els[j].removeAttribute('on' + selectors[i]);
+      target.addEventListener(selectors[i], fn, true);
+    }
+  }
+  
+}, false);

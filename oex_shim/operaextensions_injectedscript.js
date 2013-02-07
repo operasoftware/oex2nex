@@ -19,6 +19,8 @@
   var opera = global.opera || new Opera();
   
   var manifest = chrome.app.getDetails(); // null in injected scripts / popups
+  
+  navigator.browserLanguage=navigator.language; //Opera defines both, some extensions use the former
 
   var isReady = false;
 
@@ -403,7 +405,7 @@ var OMessagePort = function( isBackground ) {
 
     // Fire 'connect' event once we have all the initial listeners setup on the page
     // so we don't miss any .onconnect call from the extension page
-    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort }) ]);
+    addDelayedEvent(this, 'dispatchEvent', [ new OEvent('connect', { "source": this._localPort, "origin": "" }) ]);
 
   }
 
