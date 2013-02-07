@@ -108,10 +108,10 @@ class TestManifestIconsAttr(unittest.TestCase):
         cls.json = json.loads(cls.manifest)
         cls.icons = cls.json.get("icons")
 
-    # @classmethod
-    # def tearDownClass(cls):
-    #     """Clean up"""
-    #     subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
 
     def test_expected_sizes(self):
         self.assertEqual(3, len(self.icons))
