@@ -8,7 +8,6 @@ import re
 
 #TODO: add another oex with multiple images, test that works
 #TODO: add different oexes for different API permissions, test that works
-#TODO test permissions is not empty?
 #TODO just loop over all these tests for multiple fixtures?
 
 
@@ -72,3 +71,51 @@ class TestManifest(unittest.TestCase):
         """Test that default CSP policy is in place"""
         csp = self.json.get("content_security_policy")
         self.assertEqual(csp, "script-src \'self\' \'unsafe-eval\'; object-src \'unsafe-eval\';")
+
+
+class TestManifestIconsFileName(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-filename-test.oex tests/fixtures/converted/test",
+                        shell=True)
+        crx = zipfile.ZipFile("tests/fixtures/converted/test.crx", "r")
+        cls.manifest = crx.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.icons = cls.json.get("icons")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_expected_sizes(self):
+        self.assertEqual(3, len(self.icons))
+
+    def test_512_not_included(self):
+        """This extension has a 512 icon that we don't want"""
+        self.assertIsNone(self.icons.get("512"))
+
+
+class TestManifestIconsAttr(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-attr-test.oex tests/fixtures/converted/test",
+                        shell=True)
+        crx = zipfile.ZipFile("tests/fixtures/converted/test.crx", "r")
+        cls.manifest = crx.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.icons = cls.json.get("icons")
+
+    # @classmethod
+    # def tearDownClass(cls):
+    #     """Clean up"""
+    #     subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_expected_sizes(self):
+        self.assertEqual(3, len(self.icons))
+
+    def test_512_not_included(self):
+        """This extension has a 512 icon that we don't want"""
+        self.assertIsNone(self.icons.get("512"))
