@@ -7,11 +7,12 @@ import subprocess
 
 
 class TestCRX(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         subprocess.call("python convertor.py -x tests/fixtures/manifest-test.oex tests/fixtures/converted/manifest-test",
                         shell=True)
-
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
 
     def test_crx_exists(self):
