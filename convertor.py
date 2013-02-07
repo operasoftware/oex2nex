@@ -238,7 +238,7 @@ class Oex2Crx:
             for icon in icon_elms:
                 w = icon.attrib.get("width")
                 src = icon.attrib.get("src")
-                if w:
+                if w in ["16", "48", "128"]:
                     iconlist.append((w, src))
                 elif re.search(r"16|48|128", src):
                     m = re.search(r"16|48|128", src)
