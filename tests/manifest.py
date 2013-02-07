@@ -67,3 +67,8 @@ class TestManifest(unittest.TestCase):
         indexfile = self.json.get("background").get("page")
         self.assertIsNotNone(indexfile)
         self.assertIsInstance(indexfile, basestring)
+
+    def test_csp(self):
+        """Test that default CSP policy is in place"""
+        csp = self.json.get("content_security_policy")
+        self.assertEqual(csp, "script-src \'self\' \'unsafe-eval\'; object-src \'unsafe-eval\';")

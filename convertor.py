@@ -469,6 +469,7 @@ class Oex2Crx:
             self._merge_features(featurenames)
 
         manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
+        manifest += ',\n"content_security_policy": "script-src \'self\' \'unsafe-eval\'; object-src \'unsafe-eval\';"'
         manifest += '\n}\n'
 
         if debug:
