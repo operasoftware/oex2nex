@@ -6,6 +6,7 @@ from tests.api_finder import TestAPIFinder
 from tests.browser_action import TestBrowserAction
 from tests.norm_version import TestNormVersion
 from tests.crx import TestCRX
+from tests.manifest import TestManifest
 
 
 def tests():
@@ -16,6 +17,7 @@ def tests():
     suite.addTests(loader.loadTestsFromTestCase(TestBrowserAction))
     suite.addTests(loader.loadTestsFromTestCase(TestNormVersion))
     suite.addTests(loader.loadTestsFromTestCase(TestCRX))
+    suite.addTests(loader.loadTestsFromTestCase(TestManifest))
     return suite
 
 if __name__ == '__main__':
