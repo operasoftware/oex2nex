@@ -121,7 +121,7 @@ class Oex2Crx:
         """
         feature_map = {
             "opera:contextmenus": "contextMenus",
-            "opera:sharecookies": "cookies"
+            "opera:share-cookies": "cookies",
         }
         for feature in featurenames:
             if feature in feature_map:
