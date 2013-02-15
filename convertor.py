@@ -902,8 +902,8 @@ def main(args=None):
         sys.argv.append('-h')
     argparser = argparse.ArgumentParser(description="Convert an Opera extension into a Chrome extension")
     argparser.add_argument('-s', '--key', help="Sign the crx package with the provided key (PEM) file. The signed package is named <file>.signed.crx.")
-    argparser.add_argument('in_file', nargs='?', help="Path to an .oex file or a
-            directory where its extracted contents are available")
+    argparser.add_argument('in_file', nargs='?', help="Path to an .oex file or "
+            "a directory where its extracted contents are available")
     argparser.add_argument('out_file', nargs='?', help="Output file path (a .crx file or a directory)")
     argparser.add_argument('-x', '--outdir', action='store_true', default=False, help="Output path is a directory")
     argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
