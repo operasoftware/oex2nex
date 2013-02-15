@@ -173,10 +173,9 @@ class Oex2Crx:
         except KeyError as kex:
             sys.exit("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
 
-
         if debug:
             print(("Config.xml", configStr))
-        root = etree.fromstring(configStr.encode('UTF-8')) # xml.etree requires UTF-8 input
+        root = etree.fromstring(configStr.encode('UTF-8'))  # xml.etree requires UTF-8 input
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
         def _get_best_elem(xmltree, tag):
@@ -859,7 +858,9 @@ def fetch_shims():
             else:
                 print(('Threw :', ex, ' when fetching ', url))
 
-class UnicodingError: pass
+
+class UnicodingError:
+    pass
 
 utf8_detector = re.compile(r"""^(?:
      [\x09\x0A\x0D\x20-\x7E]            # ASCII
