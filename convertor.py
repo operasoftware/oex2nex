@@ -98,7 +98,7 @@ class Oex2Crx:
         try:
             oex = zipfile.ZipFile(self._in_file, "r")
             if self._out_dir:
-                crx = zipfile.ZipFile(self._out_file + '-tmp.crx', "w",
+                crx = zipfile.ZipFile(self._out_file + '.crx', "w",
                                       zipfile.ZIP_STORED)
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
