@@ -188,7 +188,9 @@ class Oex2Crx:
             if not rval:
                 rval = "No " + tag + " found in config.xml."
             elif not isinstance(rval, unicode):
-                rval = unicoder(rval)  # .encode("utf-8")
+                rval = unicoder(rval)
+            else:
+                rval = rval.encode("utf-8")
 
             return rval
 
@@ -428,9 +430,9 @@ class Oex2Crx:
                 # match any page
                 matches = '"<all_urls>"'
 
-        jenc = json.JSONEncoder()
-        description = jenc.encode(description)
-        name = jenc.encode(name)
+        jenc = json.JSONEncoder(ensure_ascii=False)
+        description = jenc.encode(description).decode('utf-8')
+        name = jenc.encode(name).decode('utf-8')
         icon_files = jenc.encode(iconstore)
 
         manifest = '{\n"name": ' + name
@@ -474,7 +476,7 @@ class Oex2Crx:
 
         if debug:
             print(("Manifest: ", manifest))
-        crx.writestr("manifest.json", manifest)
+        crx.writestr("manifest.json", manifest.encode('utf-8'))
         if debug:
             print("Adding resource_loader files")
         crx.writestr(oex_resource_loader + ".html", """<!DOCTYPE html>
