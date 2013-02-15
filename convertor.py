@@ -66,13 +66,24 @@ class Oex2Crx:
     - add manifest to .crx file
     - sign the .crx file if key is provided (also needs openssl installed)
     """
-    def __init__(self, in_file, out_file, key_file=None, is_dir=False):
+    def __init__(self, in_file, out_file, key_file=None, out_dir=False):
         if (in_file == None or out_file == None):
             raise Exception("You should provide input file and output file")
-        self._in_file = in_file
+        if os.path.isdir(in_file):
+            # A directory is given, let us make a zipfile for our use
+            self._in_file = out_file + '-tmp.oex'
+            f_oex = zipfile.ZipFile(self._in_file, "w", zipfile.ZIP_STORED)
+            base = os.path.join(in_file, "")
+            for top, dirns, fnames in os.walk(in_file):
+                for fname in fnames:
+                    rfn = os.path.join(top, fname)
+                    afn = rfn.split(base)[1]
+                    f_oex.write(rfn, afn)
+        else:
+            self._in_file = in_file
         self._out_file = out_file
         self._key_file = key_file
-        self._is_dir = is_dir
+        self._out_dir = out_dir
         self._oex = None
         self._crx = None
         self._zih_file = None
@@ -86,8 +97,9 @@ class Oex2Crx:
             print('Reading oex file.')
         try:
             oex = zipfile.ZipFile(self._in_file, "r")
-            if self._is_dir:
-                crx = zipfile.ZipFile(self._out_file + '.crx', "w", zipfile.ZIP_DEFLATED)
+            if self._out_dir:
+                crx = zipfile.ZipFile(self._out_file + '-tmp.crx', "w",
+                                      zipfile.ZIP_STORED)
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
@@ -551,7 +563,7 @@ class Oex2Crx:
         self.readoex()
         self._convert()
         # extract file to the specified directory
-        if self._is_dir:
+        if self._out_dir:
             if debug:
                 print(("Extracting .crx file to:", self._out_file))
             try:
@@ -562,7 +574,7 @@ class Oex2Crx:
         self._oex.close()
         self._crx.close()
         # Let us not sign if the output requested is for directory
-        if self._key_file and not self._is_dir:
+        if self._key_file and not self._out_dir:
             self.signcrx()
         print("Done!")
 
@@ -755,7 +767,7 @@ class Oex2Crx:
             try:
                 pfh = open("pubkey.der", 'rb')
                 sfh = open(out_file + '.sig', 'rb')
-                if self._is_dir:
+                if self._out_dir:
                     ofh = open(out_file + '.crx', 'rb')
                 else:
                     ofh = open(out_file, 'rb')
@@ -890,9 +902,10 @@ def main(args=None):
         sys.argv.append('-h')
     argparser = argparse.ArgumentParser(description="Convert an Opera extension into a Chrome extension")
     argparser.add_argument('-s', '--key', help="Sign the crx package with the provided key (PEM) file. The signed package is named <file>.signed.crx.")
-    argparser.add_argument('in_file', nargs='?', help="Path to the .oex file")
+    argparser.add_argument('in_file', nargs='?', help="Path to an .oex file or a
+            directory where its extracted contents are available")
     argparser.add_argument('out_file', nargs='?', help="Output file path (a .crx file or a directory)")
-    argparser.add_argument('-x', '--isdir', action='store_true', default=False, help="Output path is a directory")
+    argparser.add_argument('-x', '--outdir', action='store_true', default=False, help="Output path is a directory")
     argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
     argparser.add_argument('-f', '--fetch', default=False, action='store_true', help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
 
@@ -902,7 +915,7 @@ def main(args=None):
         debug = True
     if args.fetch:
         fetch_shims()
-    convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.isdir)
+    convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.outdir)
     convertor.convert()
     sys.exit(0)
 
