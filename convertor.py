@@ -247,7 +247,8 @@ class Oex2Crx:
                 indexfile = content.attrib["src"]
         icon_elms = root.findall("{http://www.w3.org/ns/widgets}icon")
         iconlist = []
-        if icon_elms is not None:
+        # If there's more than one icon, try to be smart about what to include
+        if len(icon_elms) > 1:
             for icon in icon_elms:
                 w = icon.attrib.get("width")
                 src = icon.attrib.get("src")
@@ -257,10 +258,13 @@ class Oex2Crx:
                     m = re.search(r"16|48|128", src)
                     w = m.group(0)
                     iconlist.append((w, src))
-                # else take the first of whatever there is
+                # else take one of whatever else is left
                 else:
                     iconlist.append(("128", src))
-                    break
+                    continue
+        # Otherwise just grab the only icon
+        elif len(icon_elms) == 1:
+            iconlist.append(("128", icon_elms[0].attrib.get("src")))
         iconstore = {size: name for (size, name) in iconlist}
 
         shim_wrap = self._shim_wrap
