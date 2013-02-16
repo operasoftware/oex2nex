@@ -100,13 +100,13 @@ class Oex2Crx:
         try:
             oex = zipfile.ZipFile(self._in_file, "r")
             if self._out_dir:
-                crx = zipfile.ZipFile(self._out_file + '-tmp.crx', "w",
-                                      zipfile.ZIP_STORED)
+                crx = zipfile.ZipFile(self._out_file + '.crx', "w",
+                                      zipfile.ZIP_DEFLATED)
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
-            sys.exit(("ERROR: Unable to read/write the input files.\n"
-                "Error was: " + str(e)))
+            sys.exit("ERROR: Unable to read/write the input files.\n"
+                "Error was: " + str(e))
 
         self._oex, self._crx = oex, crx
         if debug:
@@ -178,7 +178,7 @@ class Oex2Crx:
 
         if debug:
             print(("Config.xml", configStr))
-        root = etree.fromstring(configStr.encode('UTF-8')) # xml.etree requires UTF-8 input
+        root = etree.fromstring(configStr.encode('UTF-8'))  # xml.etree requires UTF-8 input
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
         def _get_best_elem(xmltree, tag):
@@ -250,7 +250,8 @@ class Oex2Crx:
                 indexfile = content.attrib["src"]
         icon_elms = root.findall("{http://www.w3.org/ns/widgets}icon")
         iconlist = []
-        if icon_elms is not None:
+        # If there's more than one icon, try to be smart about what to include
+        if len(icon_elms) > 1:
             for icon in icon_elms:
                 w = icon.attrib.get("width")
                 src = icon.attrib.get("src")
@@ -260,10 +261,13 @@ class Oex2Crx:
                     m = re.search(r"16|48|128", src)
                     w = m.group(0)
                     iconlist.append((w, src))
-                # else take the first of whatever there is
+                # else take one of whatever else is left
                 else:
                     iconlist.append(("128", src))
-                    break
+                    continue
+        # Otherwise just grab the only icon
+        elif len(icon_elms) == 1:
+            iconlist.append(("128", icon_elms[0].attrib.get("src")))
         iconstore = {size: name for (size, name) in iconlist}
 
         shim_wrap = self._shim_wrap
@@ -862,7 +866,9 @@ def fetch_shims():
             else:
                 print(('Threw :', ex, ' when fetching ', url))
 
-class UnicodingError: pass
+
+class UnicodingError:
+    pass
 
 utf8_detector = re.compile(r"""^(?:
      [\x09\x0A\x0D\x20-\x7E]            # ASCII
