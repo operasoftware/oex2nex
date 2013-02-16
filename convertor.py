@@ -13,17 +13,15 @@ import logging
 try:
     import html5lib
 except ImportError:
-    print("""\nERROR:\nYou need to install module html5lib to get this working.\n
+    sys.exit("""\nERROR:\nYou need to install module html5lib to get this working.\n
         The easy way to do this is to run\neasy_install html5lib\nwhere easy_install
         is available as part of your Python installation.""")
-    sys.exit(1)
 
 try:
     from slimit.parser import Parser as JSParser
 except ImportError:
-    print("""ERROR: Could not import slimit module\nIf the module is not installed
+    sys.exit("""ERROR: Could not import slimit module\nIf the module is not installed
         please install it.\ne.g. by running the command 'easy_install slimit'.""")
-    sys.exit(1)
 
 from astwalker import ASTWalker
 
@@ -68,9 +66,13 @@ class Oex2Crx:
     """
     def __init__(self, in_file, out_file, key_file=None, out_dir=False):
         if (in_file == None or out_file == None):
-            raise Exception("You should provide input file and output file")
+            sys.exit("ERROR: You should provide input file and output file")
         if os.path.isdir(in_file):
             # A directory is given, let us make a zipfile for our use
+            base = os.path.join(in_file, "")
+            if not os.path.exists(os.path.join(base, "config.xml")):
+                sys.exit("ERROR: Did not find config.xml in the input "
+                        "directory " + base + ". Is this an Opera extension?")
             self._in_file = out_file + '-tmp.oex'
             f_oex = zipfile.ZipFile(self._in_file, "w", zipfile.ZIP_STORED)
             base = os.path.join(in_file, "")
@@ -103,8 +105,8 @@ class Oex2Crx:
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
-            print(("Error reading/writing the given files.", e))
-            sys.exit(2)
+            sys.exit(("ERROR: Unable to read/write the input files.\n"
+                "Error was: " + str(e)))
 
         self._oex, self._crx = oex, crx
         if debug:
@@ -171,8 +173,8 @@ class Oex2Crx:
             # Also a quick sanity check for Opera extension format
             configStr = unicoder(oex.read("config.xml"))
         except KeyError as kex:
-            sys.exit("Is the input file a valid Opera extension? We did not find a config.xml inside.\nException was:" + str(kex))
-
+            sys.exit("ERROR: Is the input file a valid Opera extension? We did "
+                    "not find a config.xml inside.\nException was:" + str(kex))
 
         if debug:
             print(("Config.xml", configStr))
@@ -800,8 +802,8 @@ class Oex2Crx:
                 data = sfh.read()
                 sfh.close()
         except IOError:
-            print(("ERROR: Could not open " + shim + "\nDo you have the shim files in directory oex_shim/ under working directory?"))
-            sys.exit(4)
+            sys.exit("ERROR: Could not open " + shim + "\nDo you have the shim "
+                    "files in directory oex_shim/ under working directory?")
         return data
 
 
@@ -827,7 +829,8 @@ def fetch_shims():
                         fh.write(res.read())
                         fh.close()
                 except Exception as e:
-                    sys.exit(e)
+                    sys.exit("ERROR: Unable to fetch shim files from " + url +
+                            "\nException was :" + str(e))
             else:
                 if debug:
                     print(('Response:', res.code))
