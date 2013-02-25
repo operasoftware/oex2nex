@@ -48,8 +48,6 @@ class ASTWalker(NodeVisitor):
                     yield ['reg:', scope, child, child.to_ecma()]
                 # The replacements need to be done at VarStatement level
                 if isinstance(child, ast.VarStatement):
-                    if debug:
-                        print('>>>>---- ast.VarStatement', child.to_ecma())
                     ve = vef = child.to_ecma()
                     for vd in child:
                         if isinstance(vd, ast.VarDecl):
@@ -81,8 +79,6 @@ class ASTWalker(NodeVisitor):
                         yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
                 # assignments for widget.preferences
                 if isinstance(child, ast.Assign):
-                    if debug:
-                        print('>>>----> ast.Assign: ', child.to_ecma())
                     # also need to check for things like;
                     # var prefs = widget.preferences; ...; prefs.foo = 34;
                     # (we need to convert the .foo to setItem('foo', 34)
