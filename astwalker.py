@@ -36,9 +36,13 @@ class ASTWalker(NodeVisitor):
 
     def _get_replacements(self, node=None, aliases={}, scope=0):
         debug = self._debug
+        expr_root = False
         if not isinstance(node, ast.Node):
             return
         try:
+            expr_root = isinstance(node, ast.ExprStatement)
+            if debug:
+                print(">>>--- root is expression statement? :", node, expr_root)
             for child in node:
                 if isinstance(child, ast.Node):
                     ce = child.to_ecma()
@@ -46,6 +50,8 @@ class ASTWalker(NodeVisitor):
                     return
                 if debug:
                     yield ['reg:', scope, child, child.to_ecma()]
+                if debug:
+                    print(">>>--- child under exprstatement node? :", expr_root, node, child)
                 # The replacements need to be done at VarStatement level
                 if isinstance(child, ast.VarStatement):
                     if debug:
@@ -121,8 +127,13 @@ class ASTWalker(NodeVisitor):
                     # attempted below is to leave the function as it is but
                     # also export it to global scope
                     fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = ' + child.identifier.value + ';'
-                    yield [{"function": {"scope": scope, "node": child,
+                    yield [{"function-id": {"scope": scope, "node": child,
                             "text": fe, "textnew": fef}}]
+                if expr_root and isinstance(child, ast.FunctionCall):
+                    fe = child.to_ecma()
+                    fef = '(' + fe + ')'
+                    yield [{"function-expr": {"scope": scope, "node": child,
+                        "text": fe, "textnew": fef}}]
                 # Descend
                 for subchild in self._get_replacements(child, aliases, scope + 1):
                     yield subchild
