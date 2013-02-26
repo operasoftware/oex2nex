@@ -41,8 +41,8 @@ class ASTWalker(NodeVisitor):
             return
         try:
             expr_root = isinstance(node, ast.ExprStatement)
-            if debug:
-                print(">>>--- root is expression statement? :", node, expr_root)
+            # if debug:
+            #     print(">>>--- root is expression statement? :", node, expr_root)
             for child in node:
                 if isinstance(child, ast.Node):
                     ce = child.to_ecma()
@@ -50,8 +50,8 @@ class ASTWalker(NodeVisitor):
                     return
                 if debug:
                     yield ['reg:', scope, child, child.to_ecma()]
-                if debug:
-                    print(">>>--- child under exprstatement node? :", expr_root, node, child)
+                # if debug:
+                #     print(">>>--- child under exprstatement node? :", expr_root, node, child)
                 # The replacements need to be done at VarStatement level
                 if isinstance(child, ast.VarStatement):
                     ve = vef = child.to_ecma()
@@ -94,16 +94,19 @@ class ASTWalker(NodeVisitor):
                                 print('pref label:', label)
                             datf = dada = daid = val = None
                             for da in child:
-                                if isinstance(da, ast.DotAccessor):
+                                if isinstance(da, ast.DotAccessor) or isinstance(da, ast.BracketAccessor):
                                     for dac in da:
                                         if isinstance(dac, ast.Identifier) and dac.to_ecma() != label:
+                                            daid = dac.to_ecma()
+                                            daid = "'" + daid + "'"
+                                        elif isinstance(dac, ast.String):
                                             daid = dac.to_ecma()
                                         else:
                                             dada = dac.to_ecma()
                                 else:
                                     val = da.to_ecma()
                             if dada and daid and val:
-                                datf = dada + '.setItem("' + daid + '", ' + val + ');'
+                                datf = dada + '.setItem(' + daid + ', ' + val + ');'
                                 yield [{"prefs": {"scope": scope,
                                         "node": child, "text": child.to_ecma(),
                                         "textnew": datf, "aliases": aliases}}]

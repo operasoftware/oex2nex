@@ -608,7 +608,7 @@ class Oex2Crx:
             if isinstance(prefs, dict):
                 pref_str = ""
                 for key in prefs:
-                    pref_str += 'widget.preferences["' + key + '"] = "' + prefs[key] + '";\n'
+                    pref_str += 'widget.preferences.setItem("' + key + '", "' + prefs[key] + '");\n'
                 if debug:
                     print("Preferences stringified: " + pref_str)
                 if pref_str:
