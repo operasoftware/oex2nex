@@ -131,6 +131,8 @@ class ASTWalker(NodeVisitor):
                 if expr_root and isinstance(child, ast.FunctionCall):
                     fe = child.to_ecma()
                     if re.match(r'^function[\n\s]*\([\n\s]*\)[\n\s]*{', fe ):
+                        if debug:
+                            print(">>>--- expr statement workaround:", fe)
                         fef = '(' + fe + ')'
                         yield [{"function-expr": {"scope": scope, "node": child,
                                 "text": fe, "textnew": fef}}]
