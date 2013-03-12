@@ -34,7 +34,7 @@ indexdoc = "index.html"
 # process as a toolbaritem, but ...
 popupdoc = "popup.html"
 optionsdoc = "options.html"
-shim_dir = "oex_shim/"
+shim_dir = os.path.join(os.path.dirname(__file__), "oex_shim/")
 #"http://addons.opera.com/tools/oex_shim/"
 shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
 oex_bg_shim = shim_dir + "operaextensions_background.js"
