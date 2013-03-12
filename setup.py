@@ -6,4 +6,7 @@ setup(
     zip_safe=False,
     packages=["oex2crx"],
     install_requires=("slimit", "html5lib"),
+    package_data = {
+        "oex2crx": ["oex_shim/*"],
+    }
 )
