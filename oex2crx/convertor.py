@@ -49,6 +49,13 @@ has_button = False
 crxheader = "\x43\x72\x32\x34\x02\x00\x00\x00"
 
 
+class InvalidPackage(Exception):
+    """
+    Exception for malformed or invalid OEX content.
+    """
+    pass
+
+
 class Oex2Crx:
     """
     Converts an Opera extension packaged as .oex to an equivalent .crx file.
@@ -66,12 +73,12 @@ class Oex2Crx:
     """
     def __init__(self, in_file, out_file, key_file=None, out_dir=False):
         if (in_file == None or out_file == None):
-            sys.exit("ERROR: You should provide input file and output file")
+            raise ValueError("You should provide input file and output file")
         if os.path.isdir(in_file):
             # A directory is given, let us make a zipfile for our use
             base = os.path.join(in_file, "")
             if not os.path.exists(os.path.join(base, "config.xml")):
-                sys.exit("ERROR: Did not find config.xml in the input "
+                raise InvalidPackage("Did not find config.xml in the input "
                         "directory " + base + ". Is this an Opera extension?")
             self._in_file = out_file + '-tmp.oex'
             f_oex = zipfile.ZipFile(self._in_file, "w", zipfile.ZIP_STORED)
@@ -105,7 +112,7 @@ class Oex2Crx:
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
-            sys.exit("ERROR: Unable to read/write the input files.\n"
+            IOError("ERROR: Unable to read/write the input files.\n"
                 "Error was: " + str(e))
 
         self._oex, self._crx = oex, crx
@@ -173,8 +180,9 @@ class Oex2Crx:
             # Also a quick sanity check for Opera extension format
             configStr = unicoder(oex.read("config.xml"))
         except KeyError as kex:
-            sys.exit("ERROR: Is the input file a valid Opera extension? We did "
-                    "not find a config.xml inside.\nException was:" + str(kex))
+            raise InvalidPackage("Is the input file a valid Opera extension? "
+                    "We did not find a config.xml inside.\nException was:"
+                    + str(kex))
 
         if debug:
             print(("Config.xml", configStr))
@@ -577,10 +585,12 @@ class Oex2Crx:
             try:
                 self._crx.extractall(self._out_file)
             except IOError as e:
-                print(("ERROR: Threw exception while extracting crx file to the directory: ",
-                    self._out_file, "\nGot:", e, "\nIs there a file by the same name?"))
-        self._oex.close()
-        self._crx.close()
+                raise IOError(("Extracting crx file to the directory failed: %s",
+                    "\nGot: %s\nIs there a file by the same name?") %
+                        self._out_file, e.message)
+            finally:
+                self._oex.close()
+                self._crx.close()
         # Let us not sign if the output requested is for directory
         if self._key_file and not self._out_dir:
             self.signcrx()
@@ -808,7 +818,7 @@ class Oex2Crx:
                 data = sfh.read()
                 sfh.close()
         except IOError:
-            sys.exit("ERROR: Could not open " + shim + "\nDo you have the shim "
+            raise IOError("Could not open " + shim + "\nDo you have the shim "
                     "files in directory oex_shim/ under working directory?")
         return data
 
@@ -929,9 +939,11 @@ def main(args=None):
         debug = True
     if args.fetch:
         fetch_shims()
-    convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.outdir)
-    convertor.convert()
-    sys.exit(0)
+    try:
+        convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.outdir)
+        convertor.convert()
+    except (ValueError, InvalidPackage, IOError)  as e:
+        sys.exit("ERROR: %s" % e.message)
 
 
 if __name__ == "__main__":
