@@ -74,6 +74,7 @@ class Oex2Crx:
     def __init__(self, in_file, out_file, key_file=None, out_dir=False):
         if (in_file == None or out_file == None):
             raise ValueError("You should provide input file and output file")
+
         if os.path.isdir(in_file):
             # A directory is given, let us make a zipfile for our use
             base = os.path.join(in_file, "")
@@ -585,15 +586,19 @@ class Oex2Crx:
             try:
                 self._crx.extractall(self._out_file)
             except IOError as e:
+                self._oex.close()
+                self._crx.close()
                 raise IOError(("Extracting crx file to the directory failed: %s",
                     "\nGot: %s\nIs there a file by the same name?") %
                         self._out_file, e.message)
-            finally:
-                self._oex.close()
-                self._crx.close()
+
         # Let us not sign if the output requested is for directory
         if self._key_file and not self._out_dir:
             self.signcrx()
+
+        self._oex.close()
+        self._crx.close()
+
         print("Done!")
 
     def _shim_wrap(self, html, file_type="index", prefs=None, merge_scripts=False):
