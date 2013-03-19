@@ -535,9 +535,10 @@ class Oex2Crx:
         except SyntaxError:
             try:
                 jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
-            except Exception as ex:
-                print("ERROR: script parsing failed. This script might need manual fixing.\nFile: %s\n" % self._zih_file)
-                return ex
+            except Exception:
+                raise InvalidPackage("Script parsing failed. "
+                        "This script might need manual fixing."
+                        "\nFile: %s\n" % self._zih_file)
 
         walker = ASTWalker(debug)
         aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"]}
