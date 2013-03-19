@@ -75,7 +75,8 @@ class Oex2Crx:
         if (in_file == None or out_file == None):
             raise ValueError("You should provide input file and output file")
 
-        if os.path.isdir(in_file):
+        # in_file could also be a file-like object
+        if isinstance(in_file, basestring) and os.path.isdir(in_file):
             # A directory is given, let us make a zipfile for our use
             base = os.path.join(in_file, "")
             if not os.path.exists(os.path.join(base, "config.xml")):
