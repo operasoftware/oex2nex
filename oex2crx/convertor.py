@@ -293,7 +293,6 @@ class Oex2Crx:
         has_option = False
         has_injscrs = False
         resources = ""
-        merge_scripts = False
         zf_members = oex.namelist()
         # default_locale should be set in manifest.json *only* if there is a
         # corresponding _locales/foo folder in the input
@@ -345,11 +344,7 @@ class Oex2Crx:
                 f_includes = []
                 f_excludes = []
                 # add individual file names to the content_scripts value
-                if not merge_scripts:
-                    inj_scripts += ('"' + filename + '",')
-                # store the script file name to add it to manifest's content_scripts section
-                if merge_scripts:
-                    inj_scr_data += unicoder(oex.read(filename))
+                inj_scripts += ('"' + filename + '",')
                 if debug:
                     print(('Included script:', filename))
                 pos = file_data.find("==/UserScript==")
@@ -373,7 +368,7 @@ class Oex2Crx:
                     # uses glob pattern not match pattern (<all_urls>)
                     f_includes = ["*"]
                 injscrlist.append({"file": filename, "includes": f_includes, "excludes": f_excludes})
-            elif not merge_scripts and filename.endswith(".js"):
+            elif filename.endswith(".js"):
                 # do we actually *need* to make sure it's a Unicode string and not a set of
                 # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
                 # ASCII characters, Python doesn't actually care if data is originally
@@ -421,10 +416,6 @@ class Oex2Crx:
         if has_injscrs:
             if debug:
                 print('Has injected scripts')
-            # Merged injected scripts
-            if merge_scripts and inj_scr_data:
-                inj_scr_data = "opera.isReady(function(){\n" + inj_scr_data + "\n});\n"
-                crx.writestr("allscripts_injected.js", inj_scr_data.encode("utf-8"))
             # add injected script shim if we have any includes or excludes
             try:
                 crx.getinfo(oex_injscr_shim)
@@ -437,10 +428,7 @@ class Oex2Crx:
                 else:
                     print(("Could not open " + oex_injscr_shim))
 
-            if merge_scripts:
-                inj_scripts = '"' + oex_injscr_shim + '", "allscripts_injected.js"'
-            else:
-                inj_scripts = '"' + oex_injscr_shim + '", ' + inj_scripts
+            inj_scripts = '"' + oex_injscr_shim + '", ' + inj_scripts
 
             for s in includes:
                 # double-quoted string
@@ -603,7 +591,7 @@ class Oex2Crx:
 
         print("Done!")
 
-    def _shim_wrap(self, html, file_type="index", prefs=None, merge_scripts=False):
+    def _shim_wrap(self, html, file_type="index", prefs=None):
         """
         Applies certain corrections to the HTML source passed to this method.
         Specifically adds the relevant shim script, wraps all script text
@@ -645,64 +633,39 @@ class Oex2Crx:
 
             return (doc, None, None)
 
-        if merge_scripts:
-            for script in doc.getElementsByTagName("script"):
-                script_name = script.getAttribute("src")
-                if debug:
-                    print('Script from ' + file_type + ' document:' + script_name)
-                if script_name:
-                    if debug:
-                        print(('reading script data:', script_name))
-                    try:
-                        scriptdata += (oex.read(script_name)).encode("utf-8")
-                    except KeyError:
-                        print(("The file " + script_name + " was not found in archive."))
-                    self._zih_file = script_name
-                # could be an inline script
-                else:
-                    # but popups could not use inline scripts in crx packages
-                    if (script.childNodes != []):
-                        inlinescrdata = ""
-                        for cnode in script.childNodes:
-                            inlinescrdata += cnode.nodeValue
-                        inlinescrdata += script.childNodes[0].nodeValue
-                script.parentNode.removeChild(script)
-        else:
-            # move inline scripts into a new external script
-            script_count = 0
-            for script in doc.getElementsByTagName("script"):
-                script_name = script.getAttribute("src")
-                if not script_name:
-                    if (script.childNodes != []):
-                        script_data = ""
-                        for cnode in script.childNodes:
-                            script_data += cnode.nodeValue
-                        script_data = script_data.strip()
-                        if script_data:
-                            rv_scopefix = self._update_scopes(script_data)
-                            if isinstance(rv_scopefix, basestring):
-                                script_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
-                            else:
-                                script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
-                            script_count += 1
-                            iscr = doc.createElement("script")
-                            iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
-                            iscr.setAttribute("src", iscr_src)
-                            script.parentNode.replaceChild(iscr, script)
-                            try:
-                                crx.writestr(iscr_src, script_data)
-                            except UnicodeEncodeError:
-                                # oops non-ASCII bytes found. *Presumably* we have Unicode already at
-                                # this point so we can just encode it as UTF-8..
-                                # If we at this point somehow end up with data that's already UTF-8
-                                # encoded, we'll be in trouble.. will that throw or just create mojibake
-                                # in the resulting extension, I wonder?
-                                crx.writestr(iscr_src, script_data.encode('utf-8'))
+        # move inline scripts into a new external script
+        script_count = 0
+        for script in doc.getElementsByTagName("script"):
+            script_name = script.getAttribute("src")
+            if not script_name:
+                if (script.childNodes != []):
+                    script_data = ""
+                    for cnode in script.childNodes:
+                        script_data += cnode.nodeValue
+                    script_data = script_data.strip()
+                    if script_data:
+                        rv_scopefix = self._update_scopes(script_data)
+                        if isinstance(rv_scopefix, basestring):
+                            script_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
+                        else:
+                            script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
+                        script_count += 1
+                        iscr = doc.createElement("script")
+                        iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
+                        iscr.setAttribute("src", iscr_src)
+                        script.parentNode.replaceChild(iscr, script)
+                        try:
+                            crx.writestr(iscr_src, script_data)
+                        except UnicodeEncodeError:
+                            # oops non-ASCII bytes found. *Presumably* we have Unicode already at
+                            # this point so we can just encode it as UTF-8..
+                            # If we at this point somehow end up with data that's already UTF-8
+                            # encoded, we'll be in trouble.. will that throw or just create mojibake
+                            # in the resulting extension, I wonder?
+                            crx.writestr(iscr_src, script_data.encode('utf-8'))
 
         shim = doc.createElement("script")
         if file_type == "index":
-            if merge_scripts:
-                oscr = "allscripts_background.js"
             shim.setAttribute("src", oex_bg_shim)
             bgdata = self._get_shim_data(oex_bg_shim)
             if oex_bg_shim not in crx.namelist():
@@ -716,8 +679,6 @@ class Oex2Crx:
             #NOT : file_type == "popup" or file_type == "option":
             # Hopefully there would be only one popup.html or options.html in
             # the package (Localisation ~!~!~!~)
-            if merge_scripts:
-                oscr = "allscripts_" + file_type + ".js"
 
             shim.setAttribute("src", oex_anypage_shim)
             ppdata = self._get_shim_data(oex_anypage_shim)
@@ -725,11 +686,6 @@ class Oex2Crx:
             if oex_anypage_shim not in crx.namelist():
                 crx.writestr(oex_anypage_shim, ppdata)
 
-        if merge_scripts:
-            allscr = doc.createElement("script")
-            allscr.setAttribute("src", oscr)
-            tx1 = doc.createTextNode(" ")
-            allscr.appendChild(tx1)
         tx2 = doc.createTextNode(" ")
         shim.appendChild(tx2)
 
@@ -744,25 +700,14 @@ class Oex2Crx:
         if head is not None and head != []:
             head = head[0]
             head.insertBefore(shim, head.firstChild)
-            if merge_scripts:
-                head.appendChild(allscr)
             if inlinescrdata:
                 head.appendChild(inscr)
         else:
             doc.documentElement.insertBefore(shim, doc.documentElement.firstChild)
-            if merge_scripts:
-                doc.documentElement.appendChild(allscr)
             if inlinescrdata:
                 doc.documentElement.appendChild(inscr)
         # scripts are read and written here only if they are merged
         # if not, they are varscopefixed and added in the routine where other files are added.
-        if merge_scripts:
-            rval = self._update_scopes(unicoder(scriptdata))
-            # Some scripts might not parse, so don't try to wrap them.
-            # just use the original data
-            if isinstance(rval, basestring):
-                scriptdata = "opera.isReady(function(){\n" + rval + "\n});\n"
-            crx.writestr(oscr, scriptdata)
         return serializer.render(domwalker(doc))
 
     def signcrx(self):
