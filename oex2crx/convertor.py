@@ -832,9 +832,7 @@ class Oex2Crx:
 
 def fetch_shims():
     """ Download shim files from remote server """
-    import urllib.request
-    import urllib.error
-    import urllib.parse
+    import urllib2
     attempts = 0
     shims = iter(("operaextensions_background.js", "operaextensions_popup.js", "operaextensions_injectedscript.js"))
     shim = next(shims)
@@ -842,7 +840,7 @@ def fetch_shims():
     while attempts < 10:
         attempts += 1
         try:
-            res = urllib.request.urlopen(url)
+            res = urllib2.urlopen(url)
             if res.code == 200:
                 try:
                     if not os.path.exists(shim_dir):
@@ -862,7 +860,7 @@ def fetch_shims():
             except StopIteration:
                 break
             url = shim_remote + shim
-        except urllib.error.HTTPError as ex:
+        except urllib2.HTTPError as ex:
             if ex.code == 401:
                 if debug:
                     print(('HTTP Authentication required:', ex.code, ex.msg, ex.hdrs))
@@ -870,8 +868,8 @@ def fetch_shims():
                 realm = ex.hdrs["WWW-Authenticate"].split('=')[1]
                 realm = realm.strip('"')
                 if auth_type == "Basic":
-                    auth_handler = urllib.request.HTTPBasicAuthHandler()
-                    print(("Basic auth: Realm: ", realm))
+                    auth_handler = urllib2.HTTPBasicAuthHandler()
+                    print("Basic auth: Realm: ", realm)
                     print("Enter username:")
                     usr = sys.stdin.readline()
                     usr = usr.strip("\n")
@@ -879,8 +877,8 @@ def fetch_shims():
                     pwd = sys.stdin.readline()
                     pwd = pwd.strip("\n")
                     auth_handler.add_password(realm=realm, uri=shim_remote, user=usr, passwd=pwd)
-                    opener = urllib.request.build_opener(auth_handler)
-                    urllib.request.install_opener(opener)
+                    opener = urllib2.build_opener(auth_handler)
+                    urllib2.install_opener(opener)
                     continue
             else:
                 print(('Threw :', ex, ' when fetching ', url))
