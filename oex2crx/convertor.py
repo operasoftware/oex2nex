@@ -186,10 +186,17 @@ class Oex2Crx:
             raise InvalidPackage("Is the input file a valid Opera extension? "
                     "We did not find a config.xml inside.\nException was:"
                     + str(kex))
+        except UnicodingError, e:
+            raise InvalidPackage("config.xml has an unknown ecoding.")
 
         if debug:
             print(("Config.xml", configStr))
-        root = etree.fromstring(configStr.encode('UTF-8'))  # xml.etree requires UTF-8 input
+        try:
+            # xml.etree requires UTF-8 input
+            root = etree.fromstring(configStr.encode('UTF-8'))
+        except etree.ParseError, e:
+            raise InvalidPackage('Parsing config.xml failed '
+                    'with the following error: %s' % e.message)
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
 
         def _get_best_elem(xmltree, tag):
@@ -214,6 +221,8 @@ class Oex2Crx:
                 rval = "No " + tag + " found in config.xml."
             elif not isinstance(rval, unicode):
                 rval = unicoder(rval)
+                # XXX This can fail with UnicodingError, but does this function
+                # want to return unicode or utf-8?
             else:
                 rval = rval.encode("utf-8")
 
@@ -319,9 +328,14 @@ class Oex2Crx:
             if debug:
                 print("Handling file: %s" % filename)
             if re.search(r"\.(x?html?|js|json)$", filename, flags=re.I):
-                file_data = unicoder(oex.read(filename))
+                try:
+                    file_data = unicoder(oex.read(filename))
+                except UnicodingError:
+                    raise InvalidPackage("The file %s has an unknown encoding."
+                            % filename)
             else:
                 file_data = oex.read(filename)
+
             self._zih_file = filename
             # for the background process file (most likely index.html)
             # we need to parse config.xml to get the correct index.html file
