@@ -220,9 +220,10 @@ class Oex2Crx:
             if not rval:
                 rval = "No " + tag + " found in config.xml."
             elif not isinstance(rval, unicode):
-                rval = unicoder(rval)
-                # XXX This can fail with UnicodingError, but does this function
-                # want to return unicode or utf-8?
+                try:
+                    rval = unicoder(rval)
+                except UnicodingError:
+                    pass
             else:
                 rval = rval.encode("utf-8")
 
