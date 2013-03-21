@@ -34,13 +34,14 @@ indexdoc = "index.html"
 # process as a toolbaritem, but ...
 popupdoc = "popup.html"
 optionsdoc = "options.html"
-shim_dir = os.path.join(os.path.dirname(__file__), "oex_shim/")
+shim_dirname = "oex_shim"
+shim_fs_path = os.path.dirname(__file__)
 #"http://addons.opera.com/tools/oex_shim/"
-shim_remote = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
-oex_bg_shim = shim_dir + "operaextensions_background.js"
-oex_anypage_shim = shim_dir + "operaextensions_popup.js"
-oex_injscr_shim = shim_dir + "operaextensions_injectedscript.js"
-oex_resource_loader = shim_dir + "popup_resourceloader"
+shim_fetch_from = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
+oex_bg_shim = "%s/operaextensions_background.js" % shim_dirname
+oex_anypage_shim = "%s/operaextensions_popup.js" % shim_dirname
+oex_injscr_shim = "%s/operaextensions_injectedscript.js" % shim_dirname
+oex_resource_loader = "%s/popup_resourceloader" % shim_dirname
 # TODO: add a smart way of adding these following default permissions
 permissions = ["http://*/*", "https://*/*", "storage"]
 has_button = False
@@ -420,7 +421,7 @@ class Oex2Crx:
             try:
                 crx.getinfo(oex_injscr_shim)
             except KeyError:
-                injfh = open(oex_injscr_shim, 'r')
+                injfh = open(os.path.join(shim_fs_path, oex_injscr_shim), 'r')
                 if injfh:
                     inj_data = injfh.read()
                     crx.writestr(oex_injscr_shim, inj_data)
@@ -582,12 +583,13 @@ class Oex2Crx:
                     "\nGot: %s\nIs there a file by the same name?") %
                         self._out_file, e.message)
 
-        # Let us not sign if the output requested is for directory
-        if self._key_file and not self._out_dir:
-            self.signcrx()
-
+        # Close files here, so that when trying to read in for signing we get
+        # the full data!
         self._oex.close()
         self._crx.close()
+
+        if self._key_file:
+            self.signcrx()
 
         print("Done!")
 
@@ -713,6 +715,8 @@ class Oex2Crx:
     def signcrx(self):
         """ Sign the crx file using the provided private key"""
         out_file = self._out_file
+        if self._out_dir:
+            out_file += ".crx"
         key_file = self._key_file
         signedcrx = crxheader
         publen = 0
@@ -737,10 +741,7 @@ class Oex2Crx:
             try:
                 pfh = open("pubkey.der", 'rb')
                 sfh = open(out_file + '.sig', 'rb')
-                if self._out_dir:
-                    ofh = open(out_file + '.crx', 'rb')
-                else:
-                    ofh = open(out_file, 'rb')
+                ofh = open(out_file, 'rb')
             except Exception as e:
                 print(('Failed to open required files to create signature.', e))
 
@@ -763,9 +764,10 @@ class Oex2Crx:
             print(("Signing of " + out_file + " failed, ", e))
 
     def _get_shim_data(self, shim):
+        """ Reads and returns data from the shim file in shim_fs_path"""
         data = None
         try:
-            sfh = open(shim, 'r')
+            sfh = open(os.path.join(shim_fs_path, shim), 'r')
             if sfh is not None:
                 data = sfh.read()
                 sfh.close()
@@ -780,8 +782,9 @@ def fetch_shims():
     import urllib2
     attempts = 0
     shims = iter(("operaextensions_background.js", "operaextensions_popup.js", "operaextensions_injectedscript.js"))
+    shim_dir = os.path.join(shim_fs_path, shim_dirname)
     shim = next(shims)
-    url = shim_remote + shim
+    url = shim_fetch_from + shim
     while attempts < 10:
         attempts += 1
         try:
@@ -791,7 +794,7 @@ def fetch_shims():
                     if not os.path.exists(shim_dir):
                         os.mkdir(shim_dir)
                     elif os.path.isdir(shim_dir):
-                        fh = open(shim_dir + shim, 'w')
+                        fh = open(os.path.join(shim_dir, shim), 'w')
                         fh.write(res.read())
                         fh.close()
                 except Exception as e:
@@ -804,7 +807,7 @@ def fetch_shims():
                 shim = next(shims)
             except StopIteration:
                 break
-            url = shim_remote + shim
+            url = shim_fetch_from + shim
         except urllib2.HTTPError as ex:
             if ex.code == 401:
                 if debug:
@@ -821,7 +824,7 @@ def fetch_shims():
                     print("Enter password:")
                     pwd = sys.stdin.readline()
                     pwd = pwd.strip("\n")
-                    auth_handler.add_password(realm=realm, uri=shim_remote, user=usr, passwd=pwd)
+                    auth_handler.add_password(realm=realm, uri=shim_fetch_from, user=usr, passwd=pwd)
                     opener = urllib2.build_opener(auth_handler)
                     urllib2.install_opener(opener)
                     continue
@@ -894,7 +897,6 @@ def main(args=None):
         convertor.convert()
     except (ValueError, InvalidPackage, IOError)  as e:
         sys.exit("ERROR: %s" % e.message)
-
 
 if __name__ == "__main__":
     main()
