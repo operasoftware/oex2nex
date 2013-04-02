@@ -187,7 +187,7 @@ class Oex2Crx:
                     "We did not find a config.xml inside.\nException was:"
                     + str(kex))
         except UnicodingError, e:
-            raise InvalidPackage("config.xml has an unknown ecoding.")
+            raise InvalidPackage("config.xml has an unknown encoding.")
 
         if debug:
             print(("Config.xml", configStr))
