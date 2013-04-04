@@ -115,7 +115,7 @@ class Oex2Crx:
             else:
                 crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
-            IOError("ERROR: Unable to read/write the input files.\n"
+            raise IOError("Unable to read/write the input files.\n"
                 "Error was: " + str(e))
 
         self._oex, self._crx = oex, crx
