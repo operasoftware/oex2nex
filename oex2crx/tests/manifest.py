@@ -5,16 +5,15 @@ import zipfile
 import subprocess
 import json
 import re
-
-#TODO: add another oex with multiple images, test that works
-#TODO: add different oexes for different API permissions, test that works
-#TODO just loop over all these tests for multiple fixtures?
+import os
 
 
 class TestManifest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Convert the test"""
+        if not os.path.exists("tests/fixtures/converted"):
+            os.makedirs("tests/fixtures/converted")
         subprocess.call("python convertor.py -x tests/fixtures/manifest-test.oex tests/fixtures/converted/manifest-test",
                         shell=True)
         nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test.nex", "r")

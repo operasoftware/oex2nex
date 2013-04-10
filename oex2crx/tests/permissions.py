@@ -4,12 +4,15 @@ import unittest
 import zipfile
 import subprocess
 import json
+import os
 
 
 class TestContextMenuPerms(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Convert the test"""
+        if not os.path.exists("tests/fixtures/converted"):
+            os.makedirs("tests/fixtures/converted")
         subprocess.call("python convertor.py -x tests/fixtures/permissions-context-menu-001.oex tests/fixtures/converted/test1", shell=True)
         subprocess.call("python convertor.py -x tests/fixtures/permissions-context-menu-002.oex tests/fixtures/converted/test2", shell=True)
         subprocess.call("python convertor.py -x tests/fixtures/permissions-context-menu-003.oex tests/fixtures/converted/test3", shell=True)
