@@ -6,7 +6,7 @@ import zipfile
 import subprocess
 
 
-class TestCRX(unittest.TestCase):
+class TestNEX(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         subprocess.call("python convertor.py -x tests/fixtures/manifest-test.oex tests/fixtures/converted/manifest-test",
@@ -18,14 +18,14 @@ class TestCRX(unittest.TestCase):
     def tearDownClass(cls):
         subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
 
-    def test_crx_exists(self):
-        self.assertTrue(os.path.isfile("tests/fixtures/converted/manifest-test.crx"))
+    def test_nex_exists(self):
+        self.assertTrue(os.path.isfile("tests/fixtures/converted/manifest-test.nex"))
 
-    def test_crx_exists_from_dir(self):
-        self.assertTrue(os.path.isfile("tests/fixtures/converted/manifest-test-dir.crx"))
+    def test_nex_exists_from_dir(self):
+        self.assertTrue(os.path.isfile("tests/fixtures/converted/manifest-test-dir.nex"))
 
-    def test_crx_files(self):
-        crx = zipfile.ZipFile("tests/fixtures/converted/manifest-test.crx", "r")
+    def test_nex_files(self):
+        nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test.nex", "r")
         # we expect these files to get copied over
         expected = ["manifest.json", "hello.png", "popup.html", "index.html",
                     "oex_shim/operaextensions_popup.js",
@@ -34,12 +34,12 @@ class TestCRX(unittest.TestCase):
                     "oex_shim/operaextensions_background.js",
                     "inline_script_index_1.js"]
         for file in expected:
-            self.assertIn(file, crx.namelist())
+            self.assertIn(file, nex.namelist())
         #config.xml shouldn't get copied over
-        self.assertNotIn("config.xml", crx.namelist())
+        self.assertNotIn("config.xml", nex.namelist())
 
-    def test_crx_files_from_dir(self):
-        crx = zipfile.ZipFile("tests/fixtures/converted/manifest-test-dir.crx", "r")
+    def test_nex_files_from_dir(self):
+        nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test-dir.nex", "r")
         # we expect these files to get copied over
         expected = ["manifest.json", "hello.png", "popup.html", "index.html",
                     "oex_shim/operaextensions_popup.js",
@@ -48,6 +48,6 @@ class TestCRX(unittest.TestCase):
                     "oex_shim/operaextensions_background.js",
                     "inline_script_index_1.js"]
         for file in expected:
-            self.assertIn(file, crx.namelist())
+            self.assertIn(file, nex.namelist())
         #config.xml shouldn't get copied over
-        self.assertNotIn("config.xml", crx.namelist())
+        self.assertNotIn("config.xml", nex.namelist())

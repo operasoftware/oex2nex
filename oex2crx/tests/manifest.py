@@ -17,8 +17,8 @@ class TestManifest(unittest.TestCase):
         """Convert the test"""
         subprocess.call("python convertor.py -x tests/fixtures/manifest-test.oex tests/fixtures/converted/manifest-test",
                         shell=True)
-        crx = zipfile.ZipFile("tests/fixtures/converted/manifest-test.crx", "r")
-        cls.manifest = crx.open("manifest.json", "r").read()
+        nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
         cls.json = json.loads(cls.manifest)
 
     @classmethod
@@ -79,8 +79,8 @@ class TestManifestIconsFileName(unittest.TestCase):
         """Convert the test"""
         subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-filename-test.oex tests/fixtures/converted/test",
                         shell=True)
-        crx = zipfile.ZipFile("tests/fixtures/converted/test.crx", "r")
-        cls.manifest = crx.open("manifest.json", "r").read()
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
         cls.json = json.loads(cls.manifest)
         cls.icons = cls.json.get("icons")
 
@@ -103,8 +103,8 @@ class TestManifestIconsAttr(unittest.TestCase):
         """Convert the test"""
         subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-attr-test.oex tests/fixtures/converted/test",
                         shell=True)
-        crx = zipfile.ZipFile("tests/fixtures/converted/test.crx", "r")
-        cls.manifest = crx.open("manifest.json", "r").read()
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
         cls.json = json.loads(cls.manifest)
         cls.icons = cls.json.get("icons")
 

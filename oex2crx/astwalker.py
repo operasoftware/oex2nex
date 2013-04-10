@@ -133,7 +133,7 @@ class ASTWalker(NodeVisitor):
                     yield subchild
         except Exception as e:
             print("ERROR: Threw exception in script fixer. The scripts in the"
-                  "crx package might not work correctly.", e)
+                  "nex package might not work correctly.", e)
 
     def find_apicall(self, node, *apicalls):
         """

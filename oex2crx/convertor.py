@@ -57,10 +57,10 @@ class InvalidPackage(Exception):
     pass
 
 
-class Oex2Crx:
+class Oex2Nex:
     """
-    Converts an Opera extension packaged as .oex to an equivalent .crx file.
-    - parse command line and get options (zip file/oex, maybe the key to use for signing crx)
+    Converts an Opera extension packaged as .oex to an equivalent .nex file.
+    - parse command line and get options (zip file/oex, maybe the key to use for signing nex)
     - the oex file is read from the input using zipfile readers.
     - from the config.xml a DOM tree is made
     - from the above DOM tree a JSON file, manifest.json is made using -
@@ -69,8 +69,8 @@ class Oex2Crx:
     - add 'matches' part to the manifest
     - combine all scripts from index.html, popup.html, options.html to a single file
     - wrap the above in opera.isReady(function () { })
-    - add manifest to .crx file
-    - sign the .crx file if key is provided (also needs openssl installed)
+    - add manifest to .nex file
+    - sign the .nex file if key is provided (also needs openssl installed)
     """
     def __init__(self, in_file, out_file, key_file=None, out_dir=False):
         if (in_file == None or out_file == None):
@@ -97,7 +97,7 @@ class Oex2Crx:
         self._key_file = key_file
         self._out_dir = out_dir
         self._oex = None
-        self._crx = None
+        self._nex = None
         self._zih_file = None
 
     def readoex(self):
@@ -110,17 +110,17 @@ class Oex2Crx:
         try:
             oex = zipfile.ZipFile(self._in_file, "r")
             if self._out_dir:
-                crx = zipfile.ZipFile(self._out_file + '.crx', "w",
+                nex = zipfile.ZipFile(self._out_file + '.nex', "w",
                                       zipfile.ZIP_DEFLATED)
             else:
-                crx = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
+                nex = zipfile.ZipFile(self._out_file, "w", zipfile.ZIP_DEFLATED)
         except Exception as e:
             raise IOError("Unable to read/write the input files.\n"
                 "Error was: " + str(e))
 
-        self._oex, self._crx = oex, crx
+        self._oex, self._nex = oex, nex
         if debug:
-            print(('Oex:', oex, ", Crx:", crx))
+            print(('Oex:', oex, ", Nex:", nex))
 
     def _add_permission(self, *perms):
         """Adds a permission (or multiple) to the permission list."""
@@ -172,13 +172,13 @@ class Oex2Crx:
     def _convert(self):
         """
         Reads the oex file, parses its config.xml, includes/, does the
-        necessary conversion to prepare the manifest.json of the crx file, add
-        wrappers and shims to make the crx work and writes the crx package.
+        necessary conversion to prepare the manifest.json of the nex file, add
+        wrappers and shims to make the nex work and writes the nex package.
         """
 
         # parse config.xml to generate the suitable manifest entries
         oex = self._oex
-        crx = self._crx
+        nex = self._nex
         try:
             # Also a quick sanity check for Opera extension format
             configStr = unicoder(oex.read("config.xml"))
@@ -409,7 +409,7 @@ class Oex2Crx:
                 resources += ('"' + filename + '",')
 
             if (filename != "config.xml"):
-                # Copy files from locales/en/ to root of the .crx package
+                # Copy files from locales/en/ to root of the .nex package
                 do_copy = False
                 noloc_filename = None
                 if filename.startswith("locales/en"):
@@ -421,25 +421,25 @@ class Oex2Crx:
                     if debug:
                         print("Copying a localised file : %s to the root of package as : %s" % (filename, noloc_filename))
                 try:
-                    crx.writestr(filename, file_data)
+                    nex.writestr(filename, file_data)
                     if noloc_filename and do_copy:
-                        crx.writestr(noloc_filename, file_data)
+                        nex.writestr(noloc_filename, file_data)
                 except UnicodeEncodeError:
-                    crx.writestr(filename, file_data.encode("utf-8"))
+                    nex.writestr(filename, file_data.encode("utf-8"))
                     if noloc_filename and do_copy:
-                        crx.writestr(noloc_filename, file_data.encode("utf-8"))
+                        nex.writestr(noloc_filename, file_data.encode("utf-8"))
 
         if has_injscrs:
             if debug:
                 print('Has injected scripts')
             # add injected script shim if we have any includes or excludes
             try:
-                crx.getinfo(oex_injscr_shim)
+                nex.getinfo(oex_injscr_shim)
             except KeyError:
                 injfh = open(os.path.join(shim_fs_path, oex_injscr_shim), 'r')
                 if injfh:
                     inj_data = injfh.read()
-                    crx.writestr(oex_injscr_shim, inj_data)
+                    nex.writestr(oex_injscr_shim, inj_data)
                     injfh.close()
                 else:
                     print(("Could not open " + oex_injscr_shim))
@@ -508,16 +508,16 @@ class Oex2Crx:
 
         if debug:
             print(("Manifest: ", manifest))
-        crx.writestr("manifest.json", manifest.encode('utf-8'))
+        nex.writestr("manifest.json", manifest.encode('utf-8'))
         if debug:
             print("Adding resource_loader files")
-        crx.writestr(oex_resource_loader + ".html", """<!DOCTYPE html>
+        nex.writestr(oex_resource_loader + ".html", """<!DOCTYPE html>
 <style>body { margin: 0; padding: 0; min-width: 300px; min-height:
  200px; }</style>
 <iframe seamless width="100%" height="100%" style="display: block;
  position: absolute;"></iframe>
 <script src="/oex_shim/popup_resourceloader.js"></script>""")
-        crx.writestr(oex_resource_loader + ".js", """function getParam( key ) {
+        nex.writestr(oex_resource_loader + ".js", """function getParam( key ) {
    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
    var regexS = "[\\?&]" + key + "=([^&#]*)";
    var regex = new RegExp(regexS);
@@ -588,23 +588,23 @@ class Oex2Crx:
         # extract file to the specified directory
         if self._out_dir:
             if debug:
-                print(("Extracting .crx file to:", self._out_file))
+                print(("Extracting .nex file to:", self._out_file))
             try:
-                self._crx.extractall(self._out_file)
+                self._nex.extractall(self._out_file)
             except IOError as e:
                 self._oex.close()
-                self._crx.close()
-                raise IOError(("Extracting crx file to the directory failed: %s",
+                self._nex.close()
+                raise IOError(("Extracting nex file to the directory failed: %s",
                     "\nGot: %s\nIs there a file by the same name?") %
                         self._out_file, e.message)
 
         # Close files here, so that when trying to read in for signing we get
         # the full data!
         self._oex.close()
-        self._crx.close()
+        self._nex.close()
 
         if self._key_file:
-            self.signcrx()
+            self.signnex()
 
         print("Done!")
 
@@ -621,7 +621,7 @@ class Oex2Crx:
         scriptdata = ""
         inlinescrdata = ""
         oex = self._oex
-        crx = self._crx
+        nex = self._nex
         # FIXME: use the correct base for the @src (mostly this is the root [''])
         # Remove scripts only if we are merging all of them
 
@@ -672,25 +672,25 @@ class Oex2Crx:
                         iscr.setAttribute("src", iscr_src)
                         script.parentNode.replaceChild(iscr, script)
                         try:
-                            crx.writestr(iscr_src, script_data)
+                            nex.writestr(iscr_src, script_data)
                         except UnicodeEncodeError:
                             # oops non-ASCII bytes found. *Presumably* we have Unicode already at
                             # this point so we can just encode it as UTF-8..
                             # If we at this point somehow end up with data that's already UTF-8
                             # encoded, we'll be in trouble.. will that throw or just create mojibake
                             # in the resulting extension, I wonder?
-                            crx.writestr(iscr_src, script_data.encode('utf-8'))
+                            nex.writestr(iscr_src, script_data.encode('utf-8'))
 
         shim = doc.createElement("script")
         if file_type == "index":
             shim.setAttribute("src", oex_bg_shim)
             bgdata = self._get_shim_data(oex_bg_shim)
-            if oex_bg_shim not in crx.namelist():
-                crx.writestr(oex_bg_shim, bgdata)
+            if oex_bg_shim not in nex.namelist():
+                nex.writestr(oex_bg_shim, bgdata)
             if prefs:
                 (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
                 pref_sdata = "opera.isReady(function(){\n" + pref_sdata + "\n});\n"
-                crx.writestr(pref_src, pref_sdata)
+                nex.writestr(pref_src, pref_sdata)
         # add the 'anypage.shim' to all content we receive here:
         else:
             #NOT : file_type == "popup" or file_type == "option":
@@ -700,8 +700,8 @@ class Oex2Crx:
             shim.setAttribute("src", oex_anypage_shim)
             ppdata = self._get_shim_data(oex_anypage_shim)
             # add popup shim only if it hasn't been added already
-            if oex_anypage_shim not in crx.namelist():
-                crx.writestr(oex_anypage_shim, ppdata)
+            if oex_anypage_shim not in nex.namelist():
+                nex.writestr(oex_anypage_shim, ppdata)
 
         tx2 = doc.createTextNode(" ")
         shim.appendChild(tx2)
@@ -727,13 +727,13 @@ class Oex2Crx:
         # if not, they are varscopefixed and added in the routine where other files are added.
         return serializer.render(domwalker(doc))
 
-    def signcrx(self):
-        """ Sign the crx file using the provided private key"""
+    def signnex(self):
+        """ Sign the nex file using the provided private key"""
         out_file = self._out_file
         if self._out_dir:
-            out_file += ".crx"
+            out_file += ".nex"
         key_file = self._key_file
-        signedcrx = crxheader
+        signednex = crxheader
         publen = 0
         siglen = 0
         try:
@@ -741,7 +741,7 @@ class Oex2Crx:
             import shlex
             import struct
             password = ""
-            print('Signing CRX package:\nProvide password to load private key:')
+            print('Signing NEX package:\nProvide password to load private key:')
             password = sys.stdin.readline()
             if password[-1] == "\n":
                 password = password[:-1]
@@ -763,13 +763,13 @@ class Oex2Crx:
             if sfh and pfh and ofh:
                 pubdata = pfh.read()
                 sigdata = sfh.read()
-                crxdata = ofh.read()
+                nexdata = ofh.read()
                 ofh.close()
-                ofh = open(out_file + '.signed.crx', 'wb')
+                ofh = open(out_file + '.signed.nex', 'wb')
                 publen = struct.pack("<L", len(pubdata))
                 siglen = struct.pack("<L", len(sigdata))
-                signedcrx += (publen + siglen + pubdata + sigdata + crxdata)
-                ofh.write(signedcrx)
+                signednex += (publen + siglen + pubdata + sigdata + nexdata)
+                ofh.write(signednex)
                 sfh.close()
                 pfh.close()
                 ofh.close()
@@ -889,12 +889,12 @@ def main(args=None):
     import argparse
     if len(sys.argv) < 3:
         sys.argv.append('-h')
-    argparser = argparse.ArgumentParser(description="Convert an Opera extension into a Chrome extension")
-    argparser.add_argument('-s', '--key', help="Sign the crx package with the "
-            "provided key (PEM) file. The signed package is named <file>.signed.crx.")
+    argparser = argparse.ArgumentParser(description="Convert an Opera OEX extension into an Opera NEX extension")
+    argparser.add_argument('-s', '--key', help="Sign the nex package with the "
+            "provided key (PEM) file. The signed package is named <file>.signed.nex.")
     argparser.add_argument('in_file', nargs='?', help="Path to an .oex file or "
             "a directory where its extracted contents are available")
-    argparser.add_argument('out_file', nargs='?', help="Output file path (a .crx file or a directory)")
+    argparser.add_argument('out_file', nargs='?', help="Output file path (a .nex file or a directory)")
     argparser.add_argument('-x', '--outdir', action='store_true', default=False,
             help="Create or use a directory for output")
     argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
@@ -908,7 +908,7 @@ def main(args=None):
     if args.fetch:
         fetch_shims()
     try:
-        convertor = Oex2Crx(args.in_file, args.out_file, args.key, args.outdir)
+        convertor = Oex2Nex(args.in_file, args.out_file, args.key, args.outdir)
         convertor.convert()
     except (ValueError, InvalidPackage, IOError)  as e:
         sys.exit("ERROR: %s" % e.message)
