@@ -1,10 +1,10 @@
-# oex2nex Convertor
+# Oex2nex Convertor
 
 The oex2nex convertor converts an Opera oex extension into an Opera 14 nex extension, using the [oex-shim](I assume this will be on GitHub too?) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
 
 ## What does this actually do?
 
-oex2nex parses the `config.xml` file of an `oex` extension and creates a `manifest.json` file containing the relevant metadata, API permissions, and references to assets. It also parses extension code making scope fixes and generally performs all other black magic required to create a compatibility layer between the two extension models.
+oex2nex parses the `config.xml` file of an `oex` extension and creates a `manifest.json` file containing the relevant metadata, API permissions, and references to assets. It also parses extension code to make scope fixes, modify ASTs and generally perform all other black magic required to create a compatibility layer between the two extension models.
 
 ## Usage
 
@@ -42,8 +42,6 @@ $ python oex2nex/convertor.py -xd path/to/dino-comics.oex path/to/put/dino-comic
 $ python setup.py install
 ```
 
-Anything else to include here?
-
 ## Tests
 
 Currently we have a handful of tests in oex2nex/tests. You can run them like so:
@@ -53,16 +51,24 @@ $ python oex2nex/test.py
 ```
 Better test coverage is always a good thing, so feel free to contribute back tests with any improvements.
 
-## Prerequisites
-
-oex2nex works in Python 2.7 (anyone know if it works in 3? 2.6?)
-
 ## Known Issues
 
-(list things that we know won't work here)
+### Unimplemented APIs
 
-APIs that don't work?
+The following OEX and Opera APIs aren't supported by the oex-shim:
 
-icon issues
+* `window.opera` [User JS methods, events, or properties](http://www.opera.com/docs/userjs/specs/), i.e., `opera.addEventListener`, `opera.defineMagicVariable`, etc.
 
-Parsing JS issues (possible there are bugs we haven't encountered yet)
+### Icons
+
+It's possible that the icons that end up in your NEX package aren't the ideal resolution. Here's roughly how icons are selected when parsing your config.xml and OEX container: 
+
+* If there is an `<icon>` element with a `width` attribute of 16, 48, or 128, grab those.
+* IF NOT, if there is the number 16, 48, or 128 somewhere in the file name, e.g., `pretty_icon_16px.png`, grab those.
+* IF NOT, grab the only icon and use that as the 128 icon.
+
+So if you notice that the icons aren't quite right in the generated NEX container, you should modify the manifest.json to point to the correct assetes.
+
+### JavaScript Parsing
+
+We use [Slimit](https://github.com/rspivak/slimit) to parse OEX JavaScript files. While the vast majority of extensions that we've converted work without an issue—it's possible that there is [some](https://github.com/rspivak/slimit/issues/42) [syntax](https://github.com/rspivak/slimit/pull/45) or [construct](https://github.com/rspivak/slimit/pull/44) that Slimit fails to handle correctly. In these cases, you can open an issue on this project and we can investigate further.
