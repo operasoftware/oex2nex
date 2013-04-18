@@ -118,3 +118,25 @@ class TestManifestIconsAttr(unittest.TestCase):
     def test_512_not_included(self):
         """This extension has a 512 icon that we don't want"""
         self.assertIsNone(self.icons.get("512"))
+
+class TestManifestSpeedDialAttr(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/permissions-speeddial-001.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.speeddial = cls.json.get("speeddial")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_is_dict(self):
+        self.assertIsInstance(self.speeddial, dict)
+
+    def test_has_url(self):
+        self.assertIsNotNone(self.speeddial.get("url"))

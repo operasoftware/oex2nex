@@ -144,8 +144,9 @@ class Oex2Nex:
         the permissions list
         """
         feature_map = {
-            "opera:contextmenus": "contextMenus",
+            "opera:contextmenus":  "contextMenus",
             "opera:share-cookies": "cookies",
+            "opera:speeddial":     "speeddial"
         }
         for feature in featurenames:
             if feature in feature_map:
@@ -250,8 +251,15 @@ class Oex2Nex:
         has_features = False
         featurelist = root.findall("{http://www.w3.org/ns/widgets}feature")
         featurenames = []
+        sd_url = ""
+        is_speeddial_extension = False
         for feat in featurelist:
             featurenames.append(feat.attrib["name"])
+            if feat.attrib["name"].lower() == "opera:speeddial":
+                sd_url = feat.find("{http://www.w3.org/ns/widgets}param").attrib["value"]
+                is_speeddial_extension = True
+                if debug:
+                    print('Speeddial URL: ', sd_url)
         if len(featurenames):
             has_features = True
         if debug:
@@ -503,6 +511,8 @@ class Oex2Nex:
             self._merge_features(featurenames)
 
         manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
+        if is_speeddial_extension:
+            manifest += ',\n"speeddial" : {"url": "' + sd_url + '"}'
         manifest += ',\n"content_security_policy": "script-src \'self\' \'unsafe-eval\'; object-src \'unsafe-eval\';"'
         manifest += '\n}\n'
 

@@ -150,3 +150,22 @@ class TestWebRequestPerms(unittest.TestCase):
         perms = _json.get("permissions")
         self.assertIn("webRequest", perms)
         self.assertIn("webRequestBlocking", perms)
+
+
+class TestSpeedDialPerms(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/permissions-speeddial-001.oex tests/fixtures/converted/test1", shell=True)
+        cls.nex1 = zipfile.ZipFile("tests/fixtures/converted/test1.nex", "r")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_permission_exists1(self):
+        manifest = self.nex1.open("manifest.json", "r").read()
+        _json = json.loads(manifest)
+        perms = _json.get("permissions")
+        self.assertIn("speeddial", perms)
