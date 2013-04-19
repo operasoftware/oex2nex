@@ -145,8 +145,7 @@ class Oex2Nex:
         """
         feature_map = {
             "opera:contextmenus":  "contextMenus",
-            "opera:share-cookies": "cookies",
-            "opera:speeddial":     "speeddial"
+            "opera:share-cookies": "cookies"
         }
         for feature in featurenames:
             if feature in feature_map:
