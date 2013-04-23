@@ -53,7 +53,8 @@
 var deferredComponentsLoadStatus = {
   'WINTABS_LOADED': false,
   'WIDGET_API_LOADED': false,
-  'WIDGET_PREFERENCES_LOADED': false
+  'WIDGET_PREFERENCES_LOADED': false,
+  'SPEEDDIAL_LOADED': false
   // ...etc
 };
 
@@ -2331,13 +2332,8 @@ var RootBrowserTabManager = function() {
 
       } else {
 
-        var bypassRewriteUrl = false;
-        if(_tab.url == '') {
-          bypassRewriteUrl = true;
-        }
-
         // Create the new BrowserTab object using the provided properties
-        newTab = new BrowserTab(_tab, parentWindow, bypassRewriteUrl);
+        newTab = new BrowserTab(_tab, parentWindow, true);
 
         // write properties not available in BrowserTab constructor
         newTab.properties.id = _tab.id;
@@ -2352,7 +2348,7 @@ var RootBrowserTabManager = function() {
 
         newTab.properties.index = _tab.index;
 
-        if(_tab.active == true) {
+        if(_tab.active == true && newTab.properties.active == false) {
           newTab.focus();
         }
 
@@ -2397,13 +2393,6 @@ var RootBrowserTabManager = function() {
     // remove window rewriteUrl since the bootstrap has now been used
     if(newTab._windowParent.rewriteUrl !== undefined) {
       delete newTab._windowParent.rewriteUrl;
-    }
-
-    // now rewrite to the correct url
-    // (which will be automatically trigger navigation to the rewrite url)
-    if(newTab.rewriteUrl !== undefined) {
-      newTab.url = newTab.rewriteUrl;
-      delete newTab.rewriteUrl;
     }
 
     // Resolve new tab, if it hasn't been resolved already
@@ -2519,13 +2508,15 @@ var RootBrowserTabManager = function() {
       
       delete updateTab.rewriteUrl;
 
-      chrome.tabs.update(
-        updateTab.properties.id,
-        { 'url': updateTab.properties.url },
-        function(_tab) {
-          Queue.dequeue();
-        }
-      );
+      Queue.enqueue(this, function(done) {
+        chrome.tabs.update(
+          updateTab.properties.id,
+          { 'url': updateTab.properties.url },
+          function() {
+            done();
+          }.bind(this)
+        );
+      }.bind(this));
       
     } else {
       
@@ -2545,8 +2536,9 @@ var RootBrowserTabManager = function() {
         updateTab.focus();
       }
       
-      Queue.dequeue();
     }
+    
+    Queue.dequeue();
 
   }.bind(this));
 
@@ -3283,11 +3275,21 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -
 
   OEX.windows = OEX.windows || new BrowserWindowManager();
 
+} else {
+  
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['WINTABS_LOADED'] = true;
+  
 }
 
 if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -1) {
 
   OEX.tabs = OEX.tabs || new RootBrowserTabManager();
+
+}  else {
+
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['WINTABS_LOADED'] = true;
 
 }
 
@@ -4160,6 +4162,58 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('contextMenu
   global.MenuContext = MenuContext;
 
   OEC.menu = OEC.menu || new MenuContext(Opera);
+
+}
+
+
+var SpeeddialContext = function() {
+  
+  this.properties = {};
+  
+  global.opr.speeddial.get(function(speeddialProperties) {
+    this.properties.url = speeddialProperties.url;
+    this.properties.title = speeddialProperties.title;
+    
+    // Set WinTabs feature to LOADED
+    deferredComponentsLoadStatus['SPEEDDIAL_LOADED'] = true;
+  });
+
+};
+
+SpeeddialContext.prototype.constructor = SpeeddialContext;
+
+SpeeddialContext.prototype.__defineGetter__('url', function() {
+  return this.properties.url || "";
+}); // read
+
+SpeeddialContext.prototype.__defineSetter__('url', function(val) {
+  
+  global.opr.speeddial.update({ 'url': val }, function(speeddialProperties) {
+    this.properties.url = speeddialProperties.url;
+  }.bind(this));
+
+}); // write
+
+SpeeddialContext.prototype.__defineGetter__('title', function() {
+  return this.properties.title || "";
+}); // read
+
+SpeeddialContext.prototype.__defineSetter__('title', function(val) {
+  
+  global.opr.speeddial.update({ 'title': val }, function(speeddialProperties) {
+    this.properties.title = speeddialProperties.title;
+  }.bind(this));
+
+}); // write
+
+if(global.opr && global.opr.speeddial && manifest && manifest.permissions && manifest.permissions.indexOf('speeddial')!=-1){
+
+  OEC.speeddial = OEC.speeddial || new SpeeddialContext();
+
+} else {
+
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['SPEEDDIAL_LOADED'] = true;
 
 }
 
