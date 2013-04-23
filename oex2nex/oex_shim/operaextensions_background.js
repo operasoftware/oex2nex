@@ -28,6 +28,14 @@
     // Example:
     // { 'target': opera.extension, 'methodName': 'message', 'args': event }
   ];
+  
+  // Pick the right base URL for new tab generation based on the current user agent
+  var newTab_BaseURL;
+  if(/OPR/.test(navigator.userAgent)) {
+    newTab_BaseURL = "opera://startpage";
+  } else {
+    newTab_BaseURL = "chrome://newtab";
+  }
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
@@ -1372,7 +1380,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
             // Implicitly add the first BrowserTab to the new window
             createProperties.tabId = existingBrowserTab.properties.id;
 
-            shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + existingBrowserTab.properties.id;
+            shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + existingBrowserTab.properties.id;
 
           } else {
 
@@ -1406,7 +1414,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
           // set BrowserWindow object's rewriteUrl to first tab's opera id
           if( index == 0 ) {
 
-            createProperties.url = shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + newBrowserTab._operaId;
+            createProperties.url = shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + newBrowserTab._operaId;
 
           } else {
 
@@ -1420,7 +1428,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
 
     }
 
-  } else { // we only have one default chrome://newtab tab to set up
+  } else { // we only have one default chrome://newtab or opera://startpage tab to set up
 
     // setup single new tab and tell onCreated to ignore this item
     var defaultBrowserTab = new BrowserTab({ active: true }, shadowBrowserWindow);
@@ -1432,7 +1440,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
     OEX.tabs.addTab( defaultBrowserTab );
 
     // set rewriteUrl to windowId
-    shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + shadowBrowserWindow._operaId;
+    shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + shadowBrowserWindow._operaId;
 
     createProperties.url = shadowBrowserWindow.rewriteUrl;
 
@@ -1507,7 +1515,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
 
             var tabCreateProps = {
               'windowId': shadowBrowserWindow.properties.id,
-              'url': newBrowserTab.properties.url || "chrome://newtab/",
+              'url': newBrowserTab.properties.url || newTab_BaseURL + "/",
               'active': newBrowserTab.properties.active,
               'pinned': newBrowserTab.properties.pinned,
               'index': newBrowserTab.properties.index
@@ -2245,18 +2253,6 @@ var RootBrowserTabManager = function() {
         // Resolve the tab object
         this._allTabs[i].resolve(true);
 
-        this._allTabs[i].properties.url = this._allTabs[i].rewriteUrl;
-
-        delete this._allTabs[i].rewriteUrl;
-
-        chrome.tabs.update(
-          this._allTabs[i].properties.id,
-          { 'url': this._allTabs[i].properties.url },
-          function(_tab) {}
-        );
-
-        //this._allTabs[i].rewriteDone = true;
-
         // remove windowparent rewrite url
         if(this._allTabs[i]._windowParent.rewriteUrl !== undefined) {
           delete this._allTabs[i]._windowParent.rewriteUrl;
@@ -2514,24 +2510,43 @@ var RootBrowserTabManager = function() {
 
     var updateTab = this._allTabs[updateIndex];
 
-    // Update individual tab properties
+    if (tab.status == 'complete' && updateTab.rewriteUrl && updateTab.properties.url == tab.url) {
+      
+      updateTab.properties.url = updateTab.rewriteUrl;
+      updateTab.properties.title = '';
+      updateTab.properties.favIconUrl = '';
+      updateTab.properties.status = 'loading';
+      
+      delete updateTab.rewriteUrl;
 
-    updateTab.properties.url = tab.url;
-    updateTab.properties.title = tab.title;
-    updateTab.properties.favIconUrl = tab.favIconUrl;
+      chrome.tabs.update(
+        updateTab.properties.id,
+        { 'url': updateTab.properties.url },
+        function(_tab) {
+          Queue.dequeue();
+        }
+      );
+      
+    } else {
+      
+      // Update individual tab properties
+      updateTab.properties.url = tab.url;
+      updateTab.properties.title = tab.title;
+      updateTab.properties.favIconUrl = tab.favIconUrl;
 
-    updateTab.properties.status = tab.status;
+      updateTab.properties.status = tab.status;
 
-    updateTab.properties.pinned = tab.pinned;
-    updateTab.properties.incognito = tab.incognito;
+      updateTab.properties.pinned = tab.pinned;
+      updateTab.properties.incognito = tab.incognito;
 
-    updateTab.properties.index = tab.index;
+      updateTab.properties.index = tab.index;
 
-    if(tab.active == true && updateTab.properties.active == false) {
-      updateTab.focus();
+      if(tab.active == true && updateTab.properties.active == false) {
+        updateTab.focus();
+      }
+      
+      Queue.dequeue();
     }
-
-    Queue.dequeue();
 
   }.bind(this));
 
@@ -2547,7 +2562,7 @@ var RootBrowserTabManager = function() {
     for (var i = 0, l = _windows.length; i < l; i++) {
 
       // Bind the window object with its window id and resolve
-      if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == "chrome://newtab/#" + tabId ) {
+      if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == newTab_BaseURL + "/#" + tabId ) {
         _windows[i].properties.id = moveInfo.windowId;
         _windows[i].resolve(true);
         // Also resolve window object's root tab manager
@@ -2847,7 +2862,7 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
     // faviconUrl:
     'favIconUrl': '', // not settable on create
     'title': '', // not settable on create
-    'url': browserTabProperties.url ? (browserTabProperties.url + "") : 'chrome://newtab',
+    'url': browserTabProperties.url ? (browserTabProperties.url + "") : newTab_BaseURL + "/",
     // position:
     'index': browserTabProperties.position ? parseInt(browserTabProperties.position, 10) : 0
     // 'browserWindow' not part of settable properties
@@ -2860,7 +2875,7 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
   // Pass the identity of this tab through the Chromium Tabs API via the URL field
   if(!bypassRewriteUrl) {
     this.rewriteUrl = this.properties.url;
-    this.properties.url = "chrome://newtab/#" + this._operaId;
+    this.properties.url = newTab_BaseURL + "/#" + this._operaId;
   }
 
   // Set tab focused if active
@@ -14775,17 +14790,27 @@ if (global.opera) {
 
     var hasFired_DOMContentLoaded = false,
         hasFired_Load = false;
+    
+    // If we already missed DOMContentLoaded or Load events firing, record that now...
+    if(global.document.readyState === "interactive") {
+      hasFired_DOMContentLoaded = true;
+    }
+    if(global.document.readyState === "complete") {
+      hasFired_DOMContentLoaded = true;
+      hasFired_Load = true;
+    }
 
+    // ...otherwise catch DOMContentLoaded and Load events when they happen and set the same flag.
     global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
       hasFired_DOMContentLoaded = true;
       global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
     }, true);
-
     global.addEventListener("load", function handle_Load() {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
     
+    // Catch and fire readystatechange events when they happen
     global.document.addEventListener("readystatechange", function(event) {
       event.stopImmediatePropagation();
       event.stopPropagation();
@@ -14796,7 +14821,8 @@ if (global.opera) {
       }
     }, true);
     
-    var _readyState = "uninitialized";
+    // Take over handling of document.readyState via our own load bootstrap code below
+    var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
     global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
     global.document.__defineGetter__('readyState', function() { return _readyState; });
 
@@ -14835,7 +14861,7 @@ if (global.opera) {
 
     interceptAddEventListener(global, 'load');
     interceptAddEventListener(global.document, 'domcontentloaded');
-    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded events
     interceptAddEventListener(global.document, 'readystatechange');
 
     function fireEvent(name, target, props) {
@@ -14896,7 +14922,7 @@ if (global.opera) {
                 global.document.readyState = 'complete';
                 fireEvent('readystatechange', global.document);
 
-                fireEvent('load', window);
+                fireEvent('load', global);
 
                 if(currentTime >= loadTimeoutOverride) {
                   console.warn('window.load event fired on check timeout');

@@ -28,6 +28,14 @@
     // Example:
     // { 'target': opera.extension, 'methodName': 'message', 'args': event }
   ];
+  
+  // Pick the right base URL for new tab generation based on the current user agent
+  var newTab_BaseURL;
+  if(/OPR/.test(navigator.userAgent)) {
+    newTab_BaseURL = "opera://startpage";
+  } else {
+    newTab_BaseURL = "chrome://newtab";
+  }
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
@@ -843,17 +851,27 @@ if (global.opera) {
 
     var hasFired_DOMContentLoaded = false,
         hasFired_Load = false;
+    
+    // If we already missed DOMContentLoaded or Load events firing, record that now...
+    if(global.document.readyState === "interactive") {
+      hasFired_DOMContentLoaded = true;
+    }
+    if(global.document.readyState === "complete") {
+      hasFired_DOMContentLoaded = true;
+      hasFired_Load = true;
+    }
 
+    // ...otherwise catch DOMContentLoaded and Load events when they happen and set the same flag.
     global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
       hasFired_DOMContentLoaded = true;
       global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
     }, true);
-
     global.addEventListener("load", function handle_Load() {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
     
+    // Catch and fire readystatechange events when they happen
     global.document.addEventListener("readystatechange", function(event) {
       event.stopImmediatePropagation();
       event.stopPropagation();
@@ -864,7 +882,8 @@ if (global.opera) {
       }
     }, true);
     
-    var _readyState = "uninitialized";
+    // Take over handling of document.readyState via our own load bootstrap code below
+    var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
     global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
     global.document.__defineGetter__('readyState', function() { return _readyState; });
 
@@ -903,7 +922,7 @@ if (global.opera) {
 
     interceptAddEventListener(global, 'load');
     interceptAddEventListener(global.document, 'domcontentloaded');
-    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded events
     interceptAddEventListener(global.document, 'readystatechange');
 
     function fireEvent(name, target, props) {
@@ -964,7 +983,7 @@ if (global.opera) {
                 global.document.readyState = 'complete';
                 fireEvent('readystatechange', global.document);
 
-                fireEvent('load', window);
+                fireEvent('load', global);
 
                 if(currentTime >= loadTimeoutOverride) {
                   console.warn('window.load event fired on check timeout');
