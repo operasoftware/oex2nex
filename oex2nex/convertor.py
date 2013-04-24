@@ -391,6 +391,8 @@ class Oex2Nex:
                     # uses glob pattern not match pattern (<all_urls>)
                     f_includes = ["*"]
                 injscrlist.append({"file": filename, "includes": f_includes, "excludes": f_excludes})
+                file_data = self._update_scopes(file_data)
+                file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
             elif filename.endswith(".js"):
                 # do we actually *need* to make sure it's a Unicode string and not a set of
                 # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
