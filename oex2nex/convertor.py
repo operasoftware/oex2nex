@@ -400,12 +400,11 @@ class Oex2Nex:
                 # data = str.encode(data, 'utf-8')
                 if debug:
                     print(('Fixing variables in ', filename))
-                rv_scopefix = self._update_scopes(file_data)
                 # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
                 # If script parsing failed, leave it alone
-                if isinstance(rv_scopefix, basestring):
-                    file_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
+                file_data = self._update_scopes(file_data)
+                file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
             elif re.search(r'\.x?html?$', filename, flags=re.I):
                 if debug:
                     print("Adding shim for any page to file %s." % filename)
@@ -549,9 +548,10 @@ class Oex2Nex:
             try:
                 jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
             except Exception:
-                raise InvalidPackage("Script parsing failed. "
+                print ("ERROR: Script parsing failed. "
                         "This script might need manual fixing."
                         "\nFile: %s\n" % self._zih_file)
+                return scriptdata
 
         walker = ASTWalker(debug)
         aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"]}
@@ -670,11 +670,8 @@ class Oex2Nex:
                         script_data += cnode.nodeValue
                     script_data = script_data.strip()
                     if script_data:
-                        rv_scopefix = self._update_scopes(script_data)
-                        if isinstance(rv_scopefix, basestring):
-                            script_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
-                        else:
-                            script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
+                        script_data = self._update_scopes(script_data)
+                        script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
                         script_count += 1
                         iscr = doc.createElement("script")
                         iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
