@@ -512,15 +512,28 @@ function OError(name, msg, code) {
 OError.prototype.__proto__ = Error.prototype;
 
 var OEvent = function(eventType, eventProperties) {
-
-  var evt = document.createEvent("Event");
+  
+  var evt = eventProperties || {};
+  
+  evt.type = eventType;
+        
+  if(!evt.target) evt.target = global;
+  if(!evt.currentTarget) evt.currentTarget = evt.target;
+  if(!evt.srcElement) evt.srcElement = evt.target;
+  
+  if(evt.bubbles !== true) evt.bubbles = false;
+  if(evt.cancelable !== true) evt.cancelable = false;
+  
+  if(!evt.timeStamp) evt.timeStamp = 0;
+  
+  /*var evt = document.createEvent("Event");
 
   evt.initEvent(eventType, true, true);
 
   // Add custom properties or override standard event properties
   for (var i in eventProperties) {
     evt[i] = eventProperties[i];
-  }
+  }*/
 
   return evt;
 
@@ -1200,30 +1213,30 @@ var BrowserWindowManager = function() {
         if (this[i].properties.id !== windowId && this[i] == _prevFocusedWindow) {
 
           this[i].properties.focused = false;
+          
+          var _newFocusedWindow = this.getLastFocused();
 
           // Fire a new 'blur' event on the window object
           this[i].dispatchEvent(new OEvent('blur', {
-            browserWindow: _prevFocusedWindow
+            browserWindow: _newFocusedWindow
           }));
 
           // Fire a new 'blur' event on this manager object
           this.dispatchEvent(new OEvent('blur', {
-            browserWindow: _prevFocusedWindow
+            browserWindow: _newFocusedWindow
           }));
 
           // If something is blurring then we should also fire the
           // corresponding 'focus' events
 
-          var _newFocusedWindow = this.getLastFocused();
-
           // Fire a new 'focus' event on the window object
           _newFocusedWindow.dispatchEvent(new OEvent('focus', {
-            browserWindow: _newFocusedWindow
+            browserWindow: _prevFocusedWindow
           }));
 
           // Fire a new 'focus' event on this manager object
           this.dispatchEvent(new OEvent('focus', {
-            browserWindow: _newFocusedWindow
+            browserWindow: _prevFocusedWindow
           }));
 
           break;
@@ -1231,7 +1244,7 @@ var BrowserWindowManager = function() {
 
       }
 
-      Queue.dequeue();
+//      Queue.dequeue();
 
   }.bind(this));
 
@@ -1275,7 +1288,7 @@ var BrowserWindowManager = function() {
 
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2004,33 +2017,8 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
       "Could not create BrowserTab object. 'before' attribute provided is invalid.",
       DOMException.TYPE_MISMATCH_ERR
     );
-  }
-
-  // Set parent window to create the tab in
-
-  if(this._parent && this._parent.closed === true ) {
-    throw new OError(
-      "InvalidStateError",
-      "Parent window of the current BrowserTab object is in the closed state and therefore is invalid.",
-      DOMException.INVALID_STATE_ERR
-    );
-  }
-
-  var shadowBrowserTab = new BrowserTab( browserTabProperties, this._parent || OEX.windows.getLastFocused() );
-
-  // Sanitized tab properties
-  var createTabProperties = {
-    'url': shadowBrowserTab.properties.url,
-    'active': shadowBrowserTab.properties.active,
-    'pinned': shadowBrowserTab.properties.pinned
-  };
-
-  // By default, tab will be created at end of current collection
-  shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
-
-  // Set insert position for the new tab from 'before' attribute, if any
-  if( before && (before instanceof BrowserTab) ) {
-
+  } else if(before) {
+    
     if( before.closed === true ) {
       throw new OError(
         "InvalidStateError",
@@ -2046,16 +2034,37 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
         DOMException.INVALID_STATE_ERR
       );
     }
-    createTabProperties.windowId = before._windowParent ?
-                                      before._windowParent.properties.id : createTabProperties.windowId;
-    createTabProperties.index = before.position;
-
+    
+    // If we're adding this BrowserTab before an existing object then set its insert position correctly
+    browserTabProperties.position = before.properties.index;
+    
   }
 
-  // Set up tab index on start
-  if(this === OEX.tabs) {
-    shadowBrowserTab._windowParent = OEX.windows.getLastFocused();
-    shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
+  // Set parent window to create the tab in
+  var windowParent = before && before._windowParent ? before._windowParent : this._parent || OEX.windows.getLastFocused();
+  
+  if(windowParent && windowParent.closed === true ) {
+    throw new OError(
+      "InvalidStateError",
+      "Parent window of the current BrowserTab object is in the closed state and therefore is invalid.",
+      DOMException.INVALID_STATE_ERR
+    );
+  }
+
+  var shadowBrowserTab = new BrowserTab( browserTabProperties, windowParent );
+
+  // Sanitized tab properties
+  var createTabProperties = {
+    'url': shadowBrowserTab.properties.url,
+    'active': shadowBrowserTab.properties.active,
+    'pinned': shadowBrowserTab.properties.pinned,
+    'index': shadowBrowserTab.properties.index
+  };
+
+  // Set insert position for the new tab from 'before' attribute, if any
+  if( before ) {
+    createTabProperties.windowId = before._windowParent ?
+                                      before._windowParent.properties.id : createTabProperties.windowId;
   }
 
   // Add this object to the end of the current tabs collection
@@ -2083,14 +2092,6 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
         for(var i in _tab) {
           if(i == 'url') continue;
           shadowBrowserTab.properties[i] = _tab[i];
-        }
-
-        // Move this object to the correct position within the current tabs collection
-        // (but don't worry about doing this for the global tabs manager)
-        // TODO check if this is the correct behavior here
-        if(this !== OEX.tabs) {
-          this.removeTab( shadowBrowserTab );
-          this.addTab( shadowBrowserTab, shadowBrowserTab.properties.index);
         }
 
         // Resolve new tab, if it hasn't been resolved already
@@ -2398,7 +2399,7 @@ var RootBrowserTabManager = function() {
     // Resolve new tab, if it hasn't been resolved already
     newTab.resolve(true);
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2479,7 +2480,7 @@ var RootBrowserTabManager = function() {
       "prevPosition": oldTabPosition
     }));
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2538,7 +2539,7 @@ var RootBrowserTabManager = function() {
       
     }
     
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2617,7 +2618,7 @@ var RootBrowserTabManager = function() {
 
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }
 
@@ -2692,7 +2693,7 @@ var RootBrowserTabManager = function() {
       detachedTab._oldIndex = detachedTab.position;
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }
 
@@ -2762,7 +2763,7 @@ var RootBrowserTabManager = function() {
       }) );
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2837,8 +2838,18 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
   OPromise.call(this);
 
   this._windowParent = windowParent;
-
+  
   browserTabProperties = browserTabProperties || {};
+  
+  // Set the correct tab index
+  var tabIndex = 0;
+  if(browserTabProperties.position !== undefined && 
+      browserTabProperties.position !== null && 
+        parseInt(browserTabProperties.position, 10) >= 0) {
+    tabIndex = parseInt(browserTabProperties.position, 10);
+  } else if(windowParent && windowParent.tabs) {
+    tabIndex = windowParent.tabs.length;
+  }
 
   this.properties = {
     'id': undefined, // not settable on create
@@ -2856,7 +2867,7 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
     'title': '', // not settable on create
     'url': browserTabProperties.url ? (browserTabProperties.url + "") : newTab_BaseURL + "/",
     // position:
-    'index': browserTabProperties.position ? parseInt(browserTabProperties.position, 10) : 0
+    'index': tabIndex
     // 'browserWindow' not part of settable properties
     // 'tabGroup' not part of settable properties
   }
@@ -4188,9 +4199,9 @@ SpeeddialContext.prototype.__defineGetter__('url', function() {
 
 SpeeddialContext.prototype.__defineSetter__('url', function(val) {
   
-  global.opr.speeddial.update({ 'url': val }, function(speeddialProperties) {
-    this.properties.url = speeddialProperties.url;
-  }.bind(this));
+  this.properties.url = val;
+  
+  global.opr.speeddial.update({ 'url': val }, function() {});
 
 }); // write
 
@@ -4200,13 +4211,13 @@ SpeeddialContext.prototype.__defineGetter__('title', function() {
 
 SpeeddialContext.prototype.__defineSetter__('title', function(val) {
   
-  global.opr.speeddial.update({ 'title': val }, function(speeddialProperties) {
-    this.properties.title = speeddialProperties.title;
-  }.bind(this));
+  this.properties.title = val;
+  
+  global.opr.speeddial.update({ 'title': val }, function() {});
 
 }); // write
 
-if(global.opr && global.opr.speeddial && manifest && manifest.permissions && manifest.permissions.indexOf('speeddial')!=-1){
+if(global.opr && global.opr.speeddial && manifest && manifest.speeddial){
 
   OEC.speeddial = OEC.speeddial || new SpeeddialContext();
 
@@ -14941,7 +14952,7 @@ if (global.opera) {
         }
         fns['isready'] = []; // clear
 
-        var domContentLoadedTimeoutOverride = new Date().getTime() + 3000;
+        var domContentLoadedTimeoutOverride = new Date().getTime() + 120000;
 
         // Synthesize and fire the document domcontentloaded event
         (function fireDOMContentLoaded() {
@@ -14962,7 +14973,7 @@ if (global.opera) {
               console.warn('document.domcontentloaded event fired on check timeout');
             }
 
-            var loadTimeoutOverride = new Date().getTime() + 3000;
+            var loadTimeoutOverride = new Date().getTime() + 120000;
 
             // Synthesize and fire the window load event
             // after the domcontentloaded event has been
@@ -15010,7 +15021,7 @@ if (global.opera) {
       }, 0);
     }
 
-    var holdTimeoutOverride = new Date().getTime() + 3000;
+    var holdTimeoutOverride = new Date().getTime() + 240000;
 
     (function holdReady() {
 

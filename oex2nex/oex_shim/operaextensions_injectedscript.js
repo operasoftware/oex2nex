@@ -299,15 +299,28 @@ function OError(name, msg, code) {
 OError.prototype.__proto__ = Error.prototype;
 
 var OEvent = function(eventType, eventProperties) {
-
-  var evt = document.createEvent("Event");
+  
+  var evt = eventProperties || {};
+  
+  evt.type = eventType;
+        
+  if(!evt.target) evt.target = global;
+  if(!evt.currentTarget) evt.currentTarget = evt.target;
+  if(!evt.srcElement) evt.srcElement = evt.target;
+  
+  if(evt.bubbles !== true) evt.bubbles = false;
+  if(evt.cancelable !== true) evt.cancelable = false;
+  
+  if(!evt.timeStamp) evt.timeStamp = 0;
+  
+  /*var evt = document.createEvent("Event");
 
   evt.initEvent(eventType, true, true);
 
   // Add custom properties or override standard event properties
   for (var i in eventProperties) {
     evt[i] = eventProperties[i];
-  }
+  }*/
 
   return evt;
 
@@ -1204,7 +1217,7 @@ if (global.opera) {
         }
         fns['isready'] = []; // clear
 
-        var domContentLoadedTimeoutOverride = new Date().getTime() + 3000;
+        var domContentLoadedTimeoutOverride = new Date().getTime() + 120000;
 
         // Synthesize and fire the document domcontentloaded event
         (function fireDOMContentLoaded() {
@@ -1225,7 +1238,7 @@ if (global.opera) {
               console.warn('document.domcontentloaded event fired on check timeout');
             }
 
-            var loadTimeoutOverride = new Date().getTime() + 3000;
+            var loadTimeoutOverride = new Date().getTime() + 120000;
 
             // Synthesize and fire the window load event
             // after the domcontentloaded event has been
@@ -1273,7 +1286,7 @@ if (global.opera) {
       }, 0);
     }
 
-    var holdTimeoutOverride = new Date().getTime() + 3000;
+    var holdTimeoutOverride = new Date().getTime() + 240000;
 
     (function holdReady() {
 
