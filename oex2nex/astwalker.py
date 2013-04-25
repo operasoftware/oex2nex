@@ -84,7 +84,7 @@ class ASTWalker(NodeVisitor):
                     if debug:
                         yield ['check:var:', scope, 'aliases:', aliases, 'child:', child, child.to_ecma()]
                 # assignments for widget.preferences
-                if isinstance(child, ast.Assign):
+                if isinstance(node, ast.ExprStatement) and isinstance(child, ast.Assign):
                     # also need to check for things like;
                     # var prefs = widget.preferences; ...; prefs.foo = 34;
                     # (we need to convert the .foo to setItem('foo', 34)
@@ -94,6 +94,23 @@ class ASTWalker(NodeVisitor):
                                 print('pref label:', label)
                             datf = dada = daid = val = None
                             for da in child:
+                                # The following exercise is to not randomly do the setItem conversion in code like:
+                                # document.getElementById(widget.preferences.type).checked = true;
+                                # document.getElementById("speed").value = widget.preferences.interval;
+                                skip = None
+                                if len(da.children()) > 1:
+                                    for sc in da.children():
+                                        if type(sc) in [ast.DotAccessor, ast.Identifier, ast.String]:
+                                            if skip is None:
+                                                skip = False
+                                            else:
+                                                skip = skip or False
+                                        else:
+                                            skip = True
+                                    if debug:
+                                        print (">>> Skipping a pref label match: node child:", child.to_ecma())
+                                    if skip is True:
+                                        continue
                                 if isinstance(da, ast.DotAccessor) or isinstance(da, ast.BracketAccessor):
                                     for dac in da:
                                         if isinstance(dac, ast.Identifier) and dac.to_ecma() != label:
@@ -105,8 +122,9 @@ class ASTWalker(NodeVisitor):
                                             dada = dac.to_ecma()
                                 else:
                                     val = da.to_ecma()
+
                             if dada and daid and val:
-                                datf = dada + '.setItem(' + daid + ', ' + val + ');'
+                                datf = dada + '.setItem(' + daid + ', ' + val + ')'
                                 yield [{"prefs": {"scope": scope,
                                         "node": child, "text": child.to_ecma(),
                                         "textnew": datf, "aliases": aliases}}]
