@@ -6,8 +6,12 @@ from tests.api_finder import TestAPIFinder
 from tests.browser_action import TestBrowserAction
 from tests.norm_version import TestNormVersion
 from tests.nex import TestNEX
-from tests.manifest import TestManifest, TestManifestIconsFileName, TestManifestIconsAttr, TestManifestSpeedDialAttr
-from tests.permissions import TestContextMenuPerms, TestCookiesPerms, TestTabsPerms, TestWebRequestPerms
+from tests.manifest import (TestManifest, TestManifestIconsFileName,
+                            TestManifestEmptyIconSrc, TestManifestIconsAttr,
+                            TestManifestSpeedDialAttr, TestManifestMultiEmptyIconSrc,
+                            TestManifestEmptyAndNonEmptyIconSrc)
+from tests.permissions import (TestContextMenuPerms, TestCookiesPerms,
+                               TestTabsPerms, TestWebRequestPerms)
 
 
 def tests():
@@ -21,6 +25,9 @@ def tests():
     suite.addTests(loader.loadTestsFromTestCase(TestManifest))
     suite.addTests(loader.loadTestsFromTestCase(TestManifestIconsFileName))
     suite.addTests(loader.loadTestsFromTestCase(TestManifestIconsAttr))
+    suite.addTests(loader.loadTestsFromTestCase(TestManifestEmptyIconSrc))
+    suite.addTests(loader.loadTestsFromTestCase(TestManifestMultiEmptyIconSrc))
+    suite.addTests(loader.loadTestsFromTestCase(TestManifestEmptyAndNonEmptyIconSrc))
     suite.addTests(loader.loadTestsFromTestCase(TestManifestSpeedDialAttr))
     suite.addTests(loader.loadTestsFromTestCase(TestContextMenuPerms))
     suite.addTests(loader.loadTestsFromTestCase(TestCookiesPerms))

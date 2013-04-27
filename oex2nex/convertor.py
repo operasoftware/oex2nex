@@ -276,6 +276,7 @@ class Oex2Nex:
         if content is not None:
             if content.find("[@src]") is not None:
                 indexfile = content.attrib["src"]
+        has_icons = False
         icon_elms = root.findall("{http://www.w3.org/ns/widgets}icon")
         iconlist = []
         # If there's more than one icon, try to be smart about what to include
@@ -284,19 +285,30 @@ class Oex2Nex:
                 w = icon.attrib.get("width")
                 src = icon.attrib.get("src")
                 if w in ["16", "48", "128"]:
-                    iconlist.append((w, src))
+                    if src:
+                        has_icons = True
+                        iconlist.append((w, src))
                 elif re.search(r"16|48|128", src):
                     m = re.search(r"16|48|128", src)
                     w = m.group(0)
-                    iconlist.append((w, src))
+                    if src:
+                        has_icons = True
+                        iconlist.append((w, src))
                 # else take one of whatever else is left
-                else:
+                elif src:
+                    has_icons = True
                     iconlist.append(("128", src))
                     continue
         # Otherwise just grab the only icon
         elif len(icon_elms) == 1:
-            iconlist.append(("128", icon_elms[0].attrib.get("src")))
+            src = icon_elms[0].attrib.get("src")
+            if src:
+                has_icons = True
+                iconlist.append(("128", src))
+
         iconstore = {size: name for (size, name) in iconlist}
+        if debug:
+            print("Icon files: ", iconstore)
 
         shim_wrap = self._shim_wrap
         # parsing includes and excludes from the included scripts
@@ -478,7 +490,8 @@ class Oex2Nex:
         manifest += ',\n"description": ' + description
         manifest += ',\n"manifest_version" : 2,\n"version" : "' + version
         manifest += '",\n"background" : {"page" : "' + indexfile + '"}'
-        manifest += ',\n"icons" : ' + icon_files
+        if has_icons:
+            manifest += ',\n"icons" : ' + icon_files
         if has_popup:
             # Let the APIs do their job  #"default_popup" : "popup.html"}'
             manifest += ',\n"browser_action" : {}'

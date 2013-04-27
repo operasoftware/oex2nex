@@ -119,6 +119,75 @@ class TestManifestIconsAttr(unittest.TestCase):
         """This extension has a 512 icon that we don't want"""
         self.assertIsNone(self.icons.get("512"))
 
+
+class TestManifestEmptyIconSrc(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-empty-src.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        #this should be None, because the config.xml has <icon src="">
+        cls.icons = cls.json.get("icons")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_no_icon_prop(self):
+        """There shouldn't be any icons in the manifest.json"""
+        self.assertIsNone(self.icons)
+
+class TestManifestMultiEmptyIconSrc(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-src-multi-empty.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        #this should be None, because the config.xml has <icon src="">
+        cls.icons = cls.json.get("icons")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_no_icon_prop(self):
+        """There shouldn't be any icons in the manifest.json"""
+        self.assertIsNone(self.icons)
+
+
+class TestManifestEmptyAndNonEmptyIconSrc(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-icon-empty-and-nonempty-src.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.icons = cls.json.get("icons")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_no_icon_prop(self):
+        """There's one bogus and one good icon in hereself."""
+        self.assertIsNotNone(self.icons)
+
+    def test_128_is_included(self):
+        """This extension has a 128 icon that we want"""
+        self.assertIsNotNone(self.icons.get("128"))
+
+
 class TestManifestSpeedDialAttr(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
