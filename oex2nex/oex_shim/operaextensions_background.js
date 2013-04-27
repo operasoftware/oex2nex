@@ -28,6 +28,14 @@
     // Example:
     // { 'target': opera.extension, 'methodName': 'message', 'args': event }
   ];
+  
+  // Pick the right base URL for new tab generation based on the current user agent
+  var newTab_BaseURL;
+  if(/OPR/.test(navigator.userAgent)) {
+    newTab_BaseURL = "opera://startpage";
+  } else {
+    newTab_BaseURL = "chrome://newtab";
+  }
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
@@ -45,7 +53,8 @@
 var deferredComponentsLoadStatus = {
   'WINTABS_LOADED': false,
   'WIDGET_API_LOADED': false,
-  'WIDGET_PREFERENCES_LOADED': false
+  'WIDGET_PREFERENCES_LOADED': false,
+  'SPEEDDIAL_LOADED': false
   // ...etc
 };
 
@@ -503,17 +512,16 @@ function OError(name, msg, code) {
 OError.prototype.__proto__ = Error.prototype;
 
 var OEvent = function(eventType, eventProperties) {
+  
+  var props = eventProperties || {};
+  
+  var newEvt = new CustomEvent(eventType, true, true);
 
-  var evt = document.createEvent("Event");
-
-  evt.initEvent(eventType, true, true);
-
-  // Add custom properties or override standard event properties
-  for (var i in eventProperties) {
-    evt[i] = eventProperties[i];
+  for(var i in props) {
+    newEvt[i] = props[i];
   }
 
-  return evt;
+  return newEvt;
 
 };
 
@@ -1191,30 +1199,30 @@ var BrowserWindowManager = function() {
         if (this[i].properties.id !== windowId && this[i] == _prevFocusedWindow) {
 
           this[i].properties.focused = false;
+          
+          var _newFocusedWindow = this.getLastFocused();
 
           // Fire a new 'blur' event on the window object
           this[i].dispatchEvent(new OEvent('blur', {
-            browserWindow: _prevFocusedWindow
+            browserWindow: _newFocusedWindow
           }));
 
           // Fire a new 'blur' event on this manager object
           this.dispatchEvent(new OEvent('blur', {
-            browserWindow: _prevFocusedWindow
+            browserWindow: _newFocusedWindow
           }));
 
           // If something is blurring then we should also fire the
           // corresponding 'focus' events
 
-          var _newFocusedWindow = this.getLastFocused();
-
           // Fire a new 'focus' event on the window object
           _newFocusedWindow.dispatchEvent(new OEvent('focus', {
-            browserWindow: _newFocusedWindow
+            browserWindow: _prevFocusedWindow
           }));
 
           // Fire a new 'focus' event on this manager object
           this.dispatchEvent(new OEvent('focus', {
-            browserWindow: _newFocusedWindow
+            browserWindow: _prevFocusedWindow
           }));
 
           break;
@@ -1222,7 +1230,7 @@ var BrowserWindowManager = function() {
 
       }
 
-      Queue.dequeue();
+//      Queue.dequeue();
 
   }.bind(this));
 
@@ -1266,7 +1274,7 @@ var BrowserWindowManager = function() {
 
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -1372,7 +1380,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
             // Implicitly add the first BrowserTab to the new window
             createProperties.tabId = existingBrowserTab.properties.id;
 
-            shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + existingBrowserTab.properties.id;
+            shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + existingBrowserTab.properties.id;
 
           } else {
 
@@ -1406,7 +1414,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
           // set BrowserWindow object's rewriteUrl to first tab's opera id
           if( index == 0 ) {
 
-            createProperties.url = shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + newBrowserTab._operaId;
+            createProperties.url = shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + newBrowserTab._operaId;
 
           } else {
 
@@ -1420,7 +1428,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
 
     }
 
-  } else { // we only have one default chrome://newtab tab to set up
+  } else { // we only have one default chrome://newtab or opera://startpage tab to set up
 
     // setup single new tab and tell onCreated to ignore this item
     var defaultBrowserTab = new BrowserTab({ active: true }, shadowBrowserWindow);
@@ -1432,7 +1440,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
     OEX.tabs.addTab( defaultBrowserTab );
 
     // set rewriteUrl to windowId
-    shadowBrowserWindow.rewriteUrl = "chrome://newtab/#" + shadowBrowserWindow._operaId;
+    shadowBrowserWindow.rewriteUrl = newTab_BaseURL + "/#" + shadowBrowserWindow._operaId;
 
     createProperties.url = shadowBrowserWindow.rewriteUrl;
 
@@ -1507,7 +1515,7 @@ BrowserWindowManager.prototype.create = function(tabsToInject, browserWindowProp
 
             var tabCreateProps = {
               'windowId': shadowBrowserWindow.properties.id,
-              'url': newBrowserTab.properties.url || "chrome://newtab/",
+              'url': newBrowserTab.properties.url || newTab_BaseURL + "/",
               'active': newBrowserTab.properties.active,
               'pinned': newBrowserTab.properties.pinned,
               'index': newBrowserTab.properties.index
@@ -1995,33 +2003,8 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
       "Could not create BrowserTab object. 'before' attribute provided is invalid.",
       DOMException.TYPE_MISMATCH_ERR
     );
-  }
-
-  // Set parent window to create the tab in
-
-  if(this._parent && this._parent.closed === true ) {
-    throw new OError(
-      "InvalidStateError",
-      "Parent window of the current BrowserTab object is in the closed state and therefore is invalid.",
-      DOMException.INVALID_STATE_ERR
-    );
-  }
-
-  var shadowBrowserTab = new BrowserTab( browserTabProperties, this._parent || OEX.windows.getLastFocused() );
-
-  // Sanitized tab properties
-  var createTabProperties = {
-    'url': shadowBrowserTab.properties.url,
-    'active': shadowBrowserTab.properties.active,
-    'pinned': shadowBrowserTab.properties.pinned
-  };
-
-  // By default, tab will be created at end of current collection
-  shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
-
-  // Set insert position for the new tab from 'before' attribute, if any
-  if( before && (before instanceof BrowserTab) ) {
-
+  } else if(before) {
+    
     if( before.closed === true ) {
       throw new OError(
         "InvalidStateError",
@@ -2037,16 +2020,37 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
         DOMException.INVALID_STATE_ERR
       );
     }
-    createTabProperties.windowId = before._windowParent ?
-                                      before._windowParent.properties.id : createTabProperties.windowId;
-    createTabProperties.index = before.position;
-
+    
+    // If we're adding this BrowserTab before an existing object then set its insert position correctly
+    browserTabProperties.position = before.properties.index;
+    
   }
 
-  // Set up tab index on start
-  if(this === OEX.tabs) {
-    shadowBrowserTab._windowParent = OEX.windows.getLastFocused();
-    shadowBrowserTab.properties.index = createTabProperties.index = shadowBrowserTab._windowParent.tabs.length;
+  // Set parent window to create the tab in
+  var windowParent = before && before._windowParent ? before._windowParent : this._parent || OEX.windows.getLastFocused();
+  
+  if(windowParent && windowParent.closed === true ) {
+    throw new OError(
+      "InvalidStateError",
+      "Parent window of the current BrowserTab object is in the closed state and therefore is invalid.",
+      DOMException.INVALID_STATE_ERR
+    );
+  }
+
+  var shadowBrowserTab = new BrowserTab( browserTabProperties, windowParent );
+
+  // Sanitized tab properties
+  var createTabProperties = {
+    'url': shadowBrowserTab.properties.url,
+    'active': shadowBrowserTab.properties.active,
+    'pinned': shadowBrowserTab.properties.pinned,
+    'index': shadowBrowserTab.properties.index
+  };
+
+  // Set insert position for the new tab from 'before' attribute, if any
+  if( before ) {
+    createTabProperties.windowId = before._windowParent ?
+                                      before._windowParent.properties.id : createTabProperties.windowId;
   }
 
   // Add this object to the end of the current tabs collection
@@ -2074,14 +2078,6 @@ BrowserTabManager.prototype.create = function( browserTabProperties, before ) {
         for(var i in _tab) {
           if(i == 'url') continue;
           shadowBrowserTab.properties[i] = _tab[i];
-        }
-
-        // Move this object to the correct position within the current tabs collection
-        // (but don't worry about doing this for the global tabs manager)
-        // TODO check if this is the correct behavior here
-        if(this !== OEX.tabs) {
-          this.removeTab( shadowBrowserTab );
-          this.addTab( shadowBrowserTab, shadowBrowserTab.properties.index);
         }
 
         // Resolve new tab, if it hasn't been resolved already
@@ -2245,18 +2241,6 @@ var RootBrowserTabManager = function() {
         // Resolve the tab object
         this._allTabs[i].resolve(true);
 
-        this._allTabs[i].properties.url = this._allTabs[i].rewriteUrl;
-
-        delete this._allTabs[i].rewriteUrl;
-
-        chrome.tabs.update(
-          this._allTabs[i].properties.id,
-          { 'url': this._allTabs[i].properties.url },
-          function(_tab) {}
-        );
-
-        //this._allTabs[i].rewriteDone = true;
-
         // remove windowparent rewrite url
         if(this._allTabs[i]._windowParent.rewriteUrl !== undefined) {
           delete this._allTabs[i]._windowParent.rewriteUrl;
@@ -2335,13 +2319,8 @@ var RootBrowserTabManager = function() {
 
       } else {
 
-        var bypassRewriteUrl = false;
-        if(_tab.url == '') {
-          bypassRewriteUrl = true;
-        }
-
         // Create the new BrowserTab object using the provided properties
-        newTab = new BrowserTab(_tab, parentWindow, bypassRewriteUrl);
+        newTab = new BrowserTab(_tab, parentWindow, true);
 
         // write properties not available in BrowserTab constructor
         newTab.properties.id = _tab.id;
@@ -2356,7 +2335,7 @@ var RootBrowserTabManager = function() {
 
         newTab.properties.index = _tab.index;
 
-        if(_tab.active == true) {
+        if(_tab.active == true && newTab.properties.active == false) {
           newTab.focus();
         }
 
@@ -2403,17 +2382,10 @@ var RootBrowserTabManager = function() {
       delete newTab._windowParent.rewriteUrl;
     }
 
-    // now rewrite to the correct url
-    // (which will be automatically trigger navigation to the rewrite url)
-    if(newTab.rewriteUrl !== undefined) {
-      newTab.url = newTab.rewriteUrl;
-      delete newTab.rewriteUrl;
-    }
-
     // Resolve new tab, if it hasn't been resolved already
     newTab.resolve(true);
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2494,7 +2466,7 @@ var RootBrowserTabManager = function() {
       "prevPosition": oldTabPosition
     }));
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2514,24 +2486,46 @@ var RootBrowserTabManager = function() {
 
     var updateTab = this._allTabs[updateIndex];
 
-    // Update individual tab properties
+    if (tab.status == 'complete' && updateTab.rewriteUrl && updateTab.properties.url == tab.url) {
+      
+      updateTab.properties.url = updateTab.rewriteUrl;
+      updateTab.properties.title = '';
+      updateTab.properties.favIconUrl = '';
+      updateTab.properties.status = 'loading';
+      
+      delete updateTab.rewriteUrl;
 
-    updateTab.properties.url = tab.url;
-    updateTab.properties.title = tab.title;
-    updateTab.properties.favIconUrl = tab.favIconUrl;
+      Queue.enqueue(this, function(done) {
+        chrome.tabs.update(
+          updateTab.properties.id,
+          { 'url': updateTab.properties.url },
+          function() {
+            done();
+          }.bind(this)
+        );
+      }.bind(this));
+      
+    } else {
+      
+      // Update individual tab properties
+      updateTab.properties.url = tab.url;
+      updateTab.properties.title = tab.title;
+      updateTab.properties.favIconUrl = tab.favIconUrl;
 
-    updateTab.properties.status = tab.status;
+      updateTab.properties.status = tab.status;
 
-    updateTab.properties.pinned = tab.pinned;
-    updateTab.properties.incognito = tab.incognito;
+      updateTab.properties.pinned = tab.pinned;
+      updateTab.properties.incognito = tab.incognito;
 
-    updateTab.properties.index = tab.index;
+      updateTab.properties.index = tab.index;
 
-    if(tab.active == true && updateTab.properties.active == false) {
-      updateTab.focus();
+      if(tab.active == true && updateTab.properties.active == false) {
+        updateTab.focus();
+      }
+      
     }
-
-    Queue.dequeue();
+    
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2547,7 +2541,7 @@ var RootBrowserTabManager = function() {
     for (var i = 0, l = _windows.length; i < l; i++) {
 
       // Bind the window object with its window id and resolve
-      if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == "chrome://newtab/#" + tabId ) {
+      if( _windows[i].rewriteUrl && _windows[i].rewriteUrl == newTab_BaseURL + "/#" + tabId ) {
         _windows[i].properties.id = moveInfo.windowId;
         _windows[i].resolve(true);
         // Also resolve window object's root tab manager
@@ -2610,7 +2604,7 @@ var RootBrowserTabManager = function() {
 
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }
 
@@ -2685,7 +2679,7 @@ var RootBrowserTabManager = function() {
       detachedTab._oldIndex = detachedTab.position;
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }
 
@@ -2755,7 +2749,7 @@ var RootBrowserTabManager = function() {
       }) );
     }
 
-    Queue.dequeue();
+//    Queue.dequeue();
 
   }.bind(this));
 
@@ -2830,8 +2824,18 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
   OPromise.call(this);
 
   this._windowParent = windowParent;
-
+  
   browserTabProperties = browserTabProperties || {};
+  
+  // Set the correct tab index
+  var tabIndex = 0;
+  if(browserTabProperties.position !== undefined && 
+      browserTabProperties.position !== null && 
+        parseInt(browserTabProperties.position, 10) >= 0) {
+    tabIndex = parseInt(browserTabProperties.position, 10);
+  } else if(windowParent && windowParent.tabs) {
+    tabIndex = windowParent.tabs.length;
+  }
 
   this.properties = {
     'id': undefined, // not settable on create
@@ -2847,9 +2851,9 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
     // faviconUrl:
     'favIconUrl': '', // not settable on create
     'title': '', // not settable on create
-    'url': browserTabProperties.url ? (browserTabProperties.url + "") : 'chrome://newtab',
+    'url': browserTabProperties.url ? (browserTabProperties.url + "") : newTab_BaseURL + "/",
     // position:
-    'index': browserTabProperties.position ? parseInt(browserTabProperties.position, 10) : 0
+    'index': tabIndex
     // 'browserWindow' not part of settable properties
     // 'tabGroup' not part of settable properties
   }
@@ -2860,7 +2864,7 @@ var BrowserTab = function(browserTabProperties, windowParent, bypassRewriteUrl) 
   // Pass the identity of this tab through the Chromium Tabs API via the URL field
   if(!bypassRewriteUrl) {
     this.rewriteUrl = this.properties.url;
-    this.properties.url = "chrome://newtab/#" + this._operaId;
+    this.properties.url = newTab_BaseURL + "/#" + this._operaId;
   }
 
   // Set tab focused if active
@@ -3268,11 +3272,21 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -
 
   OEX.windows = OEX.windows || new BrowserWindowManager();
 
+} else {
+  
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['WINTABS_LOADED'] = true;
+  
 }
 
 if(manifest && manifest.permissions && manifest.permissions.indexOf('tabs') != -1) {
 
   OEX.tabs = OEX.tabs || new RootBrowserTabManager();
+
+}  else {
+
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['WINTABS_LOADED'] = true;
 
 }
 
@@ -4145,6 +4159,58 @@ if(manifest && manifest.permissions && manifest.permissions.indexOf('contextMenu
   global.MenuContext = MenuContext;
 
   OEC.menu = OEC.menu || new MenuContext(Opera);
+
+}
+
+
+var SpeeddialContext = function() {
+  
+  this.properties = {};
+  
+  global.opr.speeddial.get(function(speeddialProperties) {
+    this.properties.url = speeddialProperties.url;
+    this.properties.title = speeddialProperties.title;
+    
+    // Set WinTabs feature to LOADED
+    deferredComponentsLoadStatus['SPEEDDIAL_LOADED'] = true;
+  }.bind(this));
+
+};
+
+SpeeddialContext.prototype.constructor = SpeeddialContext;
+
+SpeeddialContext.prototype.__defineGetter__('url', function() {
+  return this.properties.url || "";
+}); // read
+
+SpeeddialContext.prototype.__defineSetter__('url', function(val) {
+  
+  this.properties.url = val;
+  
+  global.opr.speeddial.update({ 'url': val }, function() {});
+
+}); // write
+
+SpeeddialContext.prototype.__defineGetter__('title', function() {
+  return this.properties.title || "";
+}); // read
+
+SpeeddialContext.prototype.__defineSetter__('title', function(val) {
+  
+  this.properties.title = val;
+  
+  global.opr.speeddial.update({ 'title': val }, function() {});
+
+}); // write
+
+if(global.opr && global.opr.speeddial && manifest && manifest.speeddial){
+
+  OEC.speeddial = OEC.speeddial || new SpeeddialContext();
+
+} else {
+
+  // Set WinTabs feature to LOADED
+  deferredComponentsLoadStatus['SPEEDDIAL_LOADED'] = true;
 
 }
 
@@ -14775,17 +14841,27 @@ if (global.opera) {
 
     var hasFired_DOMContentLoaded = false,
         hasFired_Load = false;
+    
+    // If we already missed DOMContentLoaded or Load events firing, record that now...
+    if(global.document.readyState === "interactive") {
+      hasFired_DOMContentLoaded = true;
+    }
+    if(global.document.readyState === "complete") {
+      hasFired_DOMContentLoaded = true;
+      hasFired_Load = true;
+    }
 
+    // ...otherwise catch DOMContentLoaded and Load events when they happen and set the same flag.
     global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
       hasFired_DOMContentLoaded = true;
       global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
     }, true);
-
     global.addEventListener("load", function handle_Load() {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
     
+    // Catch and fire readystatechange events when they happen
     global.document.addEventListener("readystatechange", function(event) {
       event.stopImmediatePropagation();
       event.stopPropagation();
@@ -14796,7 +14872,8 @@ if (global.opera) {
       }
     }, true);
     
-    var _readyState = "uninitialized";
+    // Take over handling of document.readyState via our own load bootstrap code below
+    var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
     global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
     global.document.__defineGetter__('readyState', function() { return _readyState; });
 
@@ -14835,13 +14912,28 @@ if (global.opera) {
 
     interceptAddEventListener(global, 'load');
     interceptAddEventListener(global.document, 'domcontentloaded');
-    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded events
     interceptAddEventListener(global.document, 'readystatechange');
 
     function fireEvent(name, target, props) {
       var evtName = name.toLowerCase();
+      
+      // Role a standard object as the Event since we really need
+      // to set the target + other unsettable properties on the 
+      // isReady events
+      
+      var evt = props || {};
 
-      var evt = new OEvent(evtName, props || {});
+      evt.type = name;
+
+      if(!evt.target) evt.target = global;
+      if(!evt.currentTarget) evt.currentTarget = evt.target;
+      if(!evt.srcElement) evt.srcElement = evt.target;
+
+      if(evt.bubbles !== true) evt.bubbles = false;
+      if(evt.cancelable !== true) evt.cancelable = false;
+
+      if(!evt.timeStamp) evt.timeStamp = 0;
 
       for (var i = 0, len = fns[evtName].length; i < len; i++) {
         fns[evtName][i].call(target, evt);
@@ -14861,7 +14953,7 @@ if (global.opera) {
         }
         fns['isready'] = []; // clear
 
-        var domContentLoadedTimeoutOverride = new Date().getTime() + 3000;
+        var domContentLoadedTimeoutOverride = new Date().getTime() + 120000;
 
         // Synthesize and fire the document domcontentloaded event
         (function fireDOMContentLoaded() {
@@ -14882,7 +14974,7 @@ if (global.opera) {
               console.warn('document.domcontentloaded event fired on check timeout');
             }
 
-            var loadTimeoutOverride = new Date().getTime() + 3000;
+            var loadTimeoutOverride = new Date().getTime() + 120000;
 
             // Synthesize and fire the window load event
             // after the domcontentloaded event has been
@@ -14896,7 +14988,7 @@ if (global.opera) {
                 global.document.readyState = 'complete';
                 fireEvent('readystatechange', global.document);
 
-                fireEvent('load', window);
+                fireEvent('load', global);
 
                 if(currentTime >= loadTimeoutOverride) {
                   console.warn('window.load event fired on check timeout');
@@ -14930,7 +15022,7 @@ if (global.opera) {
       }, 0);
     }
 
-    var holdTimeoutOverride = new Date().getTime() + 3000;
+    var holdTimeoutOverride = new Date().getTime() + 240000;
 
     (function holdReady() {
 

@@ -28,6 +28,14 @@
     // Example:
     // { 'target': opera.extension, 'methodName': 'message', 'args': event }
   ];
+  
+  // Pick the right base URL for new tab generation based on the current user agent
+  var newTab_BaseURL;
+  if(/OPR/.test(navigator.userAgent)) {
+    newTab_BaseURL = "opera://startpage";
+  } else {
+    newTab_BaseURL = "chrome://newtab";
+  }
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
@@ -291,17 +299,16 @@ function OError(name, msg, code) {
 OError.prototype.__proto__ = Error.prototype;
 
 var OEvent = function(eventType, eventProperties) {
+  
+  var props = eventProperties || {};
+  
+  var newEvt = new CustomEvent(eventType, true, true);
 
-  var evt = document.createEvent("Event");
-
-  evt.initEvent(eventType, true, true);
-
-  // Add custom properties or override standard event properties
-  for (var i in eventProperties) {
-    evt[i] = eventProperties[i];
+  for(var i in props) {
+    newEvt[i] = props[i];
   }
 
-  return evt;
+  return newEvt;
 
 };
 
@@ -1099,17 +1106,27 @@ if (global.opera) {
 
     var hasFired_DOMContentLoaded = false,
         hasFired_Load = false;
+    
+    // If we already missed DOMContentLoaded or Load events firing, record that now...
+    if(global.document.readyState === "interactive") {
+      hasFired_DOMContentLoaded = true;
+    }
+    if(global.document.readyState === "complete") {
+      hasFired_DOMContentLoaded = true;
+      hasFired_Load = true;
+    }
 
+    // ...otherwise catch DOMContentLoaded and Load events when they happen and set the same flag.
     global.document.addEventListener("DOMContentLoaded", function handle_DomContentLoaded() {
       hasFired_DOMContentLoaded = true;
       global.document.removeEventListener("DOMContentLoaded", handle_DomContentLoaded, true);
     }, true);
-
     global.addEventListener("load", function handle_Load() {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
     
+    // Catch and fire readystatechange events when they happen
     global.document.addEventListener("readystatechange", function(event) {
       event.stopImmediatePropagation();
       event.stopPropagation();
@@ -1120,7 +1137,8 @@ if (global.opera) {
       }
     }, true);
     
-    var _readyState = "uninitialized";
+    // Take over handling of document.readyState via our own load bootstrap code below
+    var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
     global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
     global.document.__defineGetter__('readyState', function() { return _readyState; });
 
@@ -1159,13 +1177,28 @@ if (global.opera) {
 
     interceptAddEventListener(global, 'load');
     interceptAddEventListener(global.document, 'domcontentloaded');
-    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded
+    interceptAddEventListener(global, 'domcontentloaded'); // handled bubbled DOMContentLoaded events
     interceptAddEventListener(global.document, 'readystatechange');
 
     function fireEvent(name, target, props) {
       var evtName = name.toLowerCase();
+      
+      // Role a standard object as the Event since we really need
+      // to set the target + other unsettable properties on the 
+      // isReady events
+      
+      var evt = props || {};
 
-      var evt = new OEvent(evtName, props || {});
+      evt.type = name;
+
+      if(!evt.target) evt.target = global;
+      if(!evt.currentTarget) evt.currentTarget = evt.target;
+      if(!evt.srcElement) evt.srcElement = evt.target;
+
+      if(evt.bubbles !== true) evt.bubbles = false;
+      if(evt.cancelable !== true) evt.cancelable = false;
+
+      if(!evt.timeStamp) evt.timeStamp = 0;
 
       for (var i = 0, len = fns[evtName].length; i < len; i++) {
         fns[evtName][i].call(target, evt);
@@ -1185,7 +1218,7 @@ if (global.opera) {
         }
         fns['isready'] = []; // clear
 
-        var domContentLoadedTimeoutOverride = new Date().getTime() + 3000;
+        var domContentLoadedTimeoutOverride = new Date().getTime() + 120000;
 
         // Synthesize and fire the document domcontentloaded event
         (function fireDOMContentLoaded() {
@@ -1206,7 +1239,7 @@ if (global.opera) {
               console.warn('document.domcontentloaded event fired on check timeout');
             }
 
-            var loadTimeoutOverride = new Date().getTime() + 3000;
+            var loadTimeoutOverride = new Date().getTime() + 120000;
 
             // Synthesize and fire the window load event
             // after the domcontentloaded event has been
@@ -1220,7 +1253,7 @@ if (global.opera) {
                 global.document.readyState = 'complete';
                 fireEvent('readystatechange', global.document);
 
-                fireEvent('load', window);
+                fireEvent('load', global);
 
                 if(currentTime >= loadTimeoutOverride) {
                   console.warn('window.load event fired on check timeout');
@@ -1254,7 +1287,7 @@ if (global.opera) {
       }, 0);
     }
 
-    var holdTimeoutOverride = new Date().getTime() + 3000;
+    var holdTimeoutOverride = new Date().getTime() + 240000;
 
     (function holdReady() {
 

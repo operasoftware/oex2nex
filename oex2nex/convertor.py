@@ -403,6 +403,10 @@ class Oex2Nex:
                     # uses glob pattern not match pattern (<all_urls>)
                     f_includes = ["*"]
                 injscrlist.append({"file": filename, "includes": f_includes, "excludes": f_excludes})
+                is_json = False
+                (file_data, is_json) = self._update_scopes(file_data)
+                if not is_json:
+                    file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
             elif filename.endswith(".js"):
                 # do we actually *need* to make sure it's a Unicode string and not a set of
                 # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
@@ -412,12 +416,13 @@ class Oex2Nex:
                 # data = str.encode(data, 'utf-8')
                 if debug:
                     print(('Fixing variables in ', filename))
-                rv_scopefix = self._update_scopes(file_data)
                 # wrap scripts inside opera.isReady()
                 # Important: ONLY ASCII in these strings, please..
                 # If script parsing failed, leave it alone
-                if isinstance(rv_scopefix, basestring):
-                    file_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
+                is_json = False
+                (file_data, is_json) = self._update_scopes(file_data)
+                if not is_json:
+                    file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
             elif re.search(r'\.x?html?$', filename, flags=re.I):
                 if debug:
                     print("Adding shim for any page to file %s." % filename)
@@ -556,15 +561,23 @@ class Oex2Nex:
     def _update_scopes(self, scriptdata):
         """ Attempt to parse the script text and do some variable scoping fixes
         so that the scripts used in the oex work with the shim """
+        is_json = False
         try:
             jstree = JSParser().parse(scriptdata)
         except SyntaxError:
             try:
                 jstree = JSParser().parse(str(scriptdata, 'UTF-8'))
             except Exception:
-                raise InvalidPackage("Script parsing failed. "
-                        "This script might need manual fixing."
-                        "\nFile: %s\n" % self._zih_file)
+                try:
+                    # Attempt to load as JSON
+                    json.loads(scriptdata)
+                    is_json = True
+                    return (scriptdata, is_json)
+                except:
+                    print ("ERROR: Script parsing failed. "
+                            "This script might need manual fixing."
+                            "\nFile: %s\n" % self._zih_file)
+                    return (scriptdata, is_json)
 
         walker = ASTWalker(debug)
         aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"]}
@@ -601,7 +614,7 @@ class Oex2Nex:
         if walker.find_button(jstree):
             global has_button
             has_button = True
-        return scriptdata
+        return (scriptdata, is_json)
 
     def convert(self):
         """ Public method which does the real work """
@@ -653,8 +666,11 @@ class Oex2Nex:
             script src"""
             if isinstance(prefs, dict):
                 pref_str = ""
+                jenc = json.JSONEncoder(ensure_ascii=False)
                 for key in prefs:
-                    pref_str += 'widget.preferences.setItem("' + key + '", "' + prefs[key] + '");\n'
+                    cur_pref_val = jenc.encode(prefs[key]).decode('utf-8')
+                    cur_pref = jenc.encode(key).decode('utf-8')
+                    pref_str += 'widget.preferences.setItem(' + cur_pref + ', ' + cur_pref_val + ');\n'
                 if debug:
                     print("Preferences stringified: " + pref_str)
                 if pref_str:
@@ -683,10 +699,9 @@ class Oex2Nex:
                         script_data += cnode.nodeValue
                     script_data = script_data.strip()
                     if script_data:
-                        rv_scopefix = self._update_scopes(script_data)
-                        if isinstance(rv_scopefix, basestring):
-                            script_data = "opera.isReady(function(){\n" + rv_scopefix + "\n});\n"
-                        else:
+                        is_json = False
+                        (script_data, is_json) = self._update_scopes(script_data)
+                        if not is_json:
                             script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
                         script_count += 1
                         iscr = doc.createElement("script")
