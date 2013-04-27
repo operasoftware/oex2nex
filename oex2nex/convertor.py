@@ -497,11 +497,13 @@ class Oex2Nex:
         manifest += '",\n"background" : {"page" : "' + indexfile + '"}'
         if has_icons:
             manifest += ',\n"icons" : ' + icon_files
-        if has_popup:
-            # Let the APIs do their job  #"default_popup" : "popup.html"}'
-            manifest += ',\n"browser_action" : {}'
-        if has_button and not has_popup:
-            manifest += ',\n"browser_action" : {}'
+        # An extension cannot have both speeddial and browser_action
+        if not is_speeddial_extension:
+            if has_popup:
+                # Let the APIs do their job  #"default_popup" : "popup.html"}'
+                manifest += ',\n"browser_action" : {}'
+            if has_button and not has_popup:
+                manifest += ',\n"browser_action" : {}'
         if has_option:
             manifest += ',\n"options_page" : "options.html"'
         # default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
