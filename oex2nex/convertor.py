@@ -306,7 +306,7 @@ class Oex2Nex:
                 has_icons = True
                 iconlist.append(("128", src))
 
-        iconstore = {size: name for (size, name) in iconlist}
+        iconstore = dict((size, name) for (size, name) in iconlist)
         if debug:
             print("Icon files: ", iconstore)
 
