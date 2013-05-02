@@ -100,7 +100,7 @@ class ASTWalker(NodeVisitor):
                                 skip = None
                                 if len(da.children()) > 1:
                                     for sc in da.children():
-                                        if type(sc) in [ast.DotAccessor, ast.Identifier, ast.String]:
+                                        if type(sc) in [ast.BracketAccessor, ast.DotAccessor, ast.Identifier, ast.String]:
                                             if skip is None:
                                                 skip = False
                                             else:
