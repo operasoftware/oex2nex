@@ -88,29 +88,17 @@ class ASTWalker(NodeVisitor):
                     # also need to check for things like;
                     # var prefs = widget.preferences; ...; prefs.foo = 34;
                     # (we need to convert the .foo to setItem('foo', 34)
+                    print ('children:', child.children())
                     for label in aliases["preferences"]:
-                        if (ce.find(label) > -1):
+                        # DON't touch things like:
+                        # document.getElementById("category").options[Number(widget.preferences.select)].selected = 42;
+                        # document.getElementById(widget.preferences.type).checked = true;
+                        # document.getElementById("speed").value = widget.preferences.interval;
+                        if (ce.find(label) > -1) and re.search(label + '(?:.\s*\w+|\[\w+\])\s*=', ce):
                             if debug:
                                 print('pref label:', label)
                             datf = dada = daid = val = None
                             for da in child:
-                                # The following exercise is to not randomly do the setItem conversion in code like:
-                                # document.getElementById(widget.preferences.type).checked = true;
-                                # document.getElementById("speed").value = widget.preferences.interval;
-                                skip = None
-                                if len(da.children()) > 1:
-                                    for sc in da.children():
-                                        if type(sc) in [ast.BracketAccessor, ast.DotAccessor, ast.Identifier, ast.String]:
-                                            if skip is None:
-                                                skip = False
-                                            else:
-                                                skip = skip or False
-                                        else:
-                                            skip = True
-                                    if skip is True:
-                                        if debug:
-                                            print (">>> Skipping a pref label match: node child:", child.to_ecma())
-                                        continue
                                 # Handle the following:
                                 # widget.preferences.token = event.data.token;
                                 # widget.preferences.secret = event.data.secret;
