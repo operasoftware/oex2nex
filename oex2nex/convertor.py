@@ -676,6 +676,7 @@ class Oex2Nex:
                 if debug:
                     print("Preferences stringified: " + pref_str)
                 if pref_str:
+                    pref_str = 'if (!widget.preferences.getItem("_OPERA_INTERNAL_defaultPrefsSet")){\n%s}\nwidget.preferences.setItem("_OPERA_INTERNAL_defaultPrefsSet", true);\n' % (pref_str)
                     p_scr = doc.createElement("script")
                     p_scr_src = "exported_prefs.js"
                     p_scr.setAttribute("src", p_scr_src)
