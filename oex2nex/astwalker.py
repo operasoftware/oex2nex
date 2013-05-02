@@ -107,11 +107,18 @@ class ASTWalker(NodeVisitor):
                                                 skip = skip or False
                                         else:
                                             skip = True
-                                    if debug:
-                                        print (">>> Skipping a pref label match: node child:", child.to_ecma())
                                     if skip is True:
+                                        if debug:
+                                            print (">>> Skipping a pref label match: node child:", child.to_ecma())
                                         continue
-                                if isinstance(da, ast.DotAccessor) or isinstance(da, ast.BracketAccessor):
+                                # Handle the following:
+                                # widget.preferences.token = event.data.token;
+                                # widget.preferences.secret = event.data.secret;
+                                # widget.preferences["foo"] = bar;
+                                # var prefs = widget.preferences;
+                                # prefs.cat = meow;
+                                # prefs["coo"] = ceow;
+                                if (isinstance(da, ast.DotAccessor) or isinstance(da, ast.BracketAccessor)) and da.to_ecma().find(label) > -1:
                                     for dac in da:
                                         if isinstance(dac, ast.Identifier) and dac.to_ecma() != label:
                                             daid = dac.to_ecma()
@@ -129,7 +136,7 @@ class ASTWalker(NodeVisitor):
                                         "node": child, "text": child.to_ecma(),
                                         "textnew": datf, "aliases": aliases}}]
                             elif debug:
-                                print("Entered preferences finder but failed to find one; code", child.to_ecma())
+                                print("Entered preferences finder but failed to find one; code: prefix:", dada, ", key:", daid, ":value:", val, child.to_ecma())
                             # not much chance that we would again match at the same place
                             break
                 if (scope == 0) and isinstance(child, ast.FuncDecl):
