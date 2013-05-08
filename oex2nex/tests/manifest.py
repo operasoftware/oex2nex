@@ -209,3 +209,47 @@ class TestManifestSpeedDialAttr(unittest.TestCase):
 
     def test_has_url(self):
         self.assertIsNotNone(self.speeddial.get("url"))
+
+class TestManifestDeveloperAttr(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-developer-attr-001.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.developer = cls.json.get("developer")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_is_unicode(self):
+        self.assertIsInstance(self.developer, unicode)
+
+    def test_is_andreas(self):
+        self.assertEqual(self.developer, "andreasbovens")
+
+class TestManifestEmptyDeveloperAttr(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Convert the test"""
+        subprocess.call("python convertor.py -x tests/fixtures/manifest-developer-attr-002.oex tests/fixtures/converted/test",
+                        shell=True)
+        nex = zipfile.ZipFile("tests/fixtures/converted/test.nex", "r")
+        cls.manifest = nex.open("manifest.json", "r").read()
+        cls.json = json.loads(cls.manifest)
+        cls.developer = cls.json.get("developer")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up"""
+        subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
+
+    def test_is_none(self):
+        self.assertIsNone(self.developer)
+
+    def test_is_not_andreas(self):
+        self.assertNotEqual(self.developer, "andreasbovens")

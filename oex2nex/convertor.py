@@ -305,11 +305,9 @@ class Oex2Nex:
             if src:
                 has_icons = True
                 iconlist.append(("128", src))
-
         iconstore = dict((size, name) for (size, name) in iconlist)
         if debug:
             print("Icon files: ", iconstore)
-
         shim_wrap = self._shim_wrap
         # parsing includes and excludes from the included scripts
         includes = []
@@ -322,6 +320,7 @@ class Oex2Nex:
         has_popup = False
         has_option = False
         has_injscrs = False
+        has_author = False
         resources = ""
         zf_members = oex.namelist()
         # default_locale should be set in manifest.json *only* if there is a
@@ -340,6 +339,13 @@ class Oex2Nex:
                     if debug:
                         print('no _locales/' + default_locale + '/messages.json in source zip file, ignoring default locale')
                     default_locale = ''
+        author_elm = root.find("{http://www.w3.org/ns/widgets}author")
+        if author_elm is not None:
+            if author_elm.text:
+                author_name = author_elm.text
+                has_author = True
+        if debug:
+            print("Author name: ", author_name)
 
         for filename in zf_members:
             # dropping the _locales content if default_locale is not defined
@@ -492,6 +498,8 @@ class Oex2Nex:
         icon_files = jenc.encode(iconstore)
 
         manifest = '{\n"name": ' + name
+        if has_author:
+            manifest += ',\n"developer": "' + author_name + '"'
         manifest += ',\n"description": ' + description
         manifest += ',\n"manifest_version" : 2,\n"version" : "' + version
         manifest += '",\n"background" : {"page" : "' + indexfile + '"}'
