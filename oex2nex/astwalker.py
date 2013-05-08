@@ -88,7 +88,8 @@ class ASTWalker(NodeVisitor):
                     # also need to check for things like;
                     # var prefs = widget.preferences; ...; prefs.foo = 34;
                     # (we need to convert the .foo to setItem('foo', 34)
-                    print ('children:', child.children())
+                    if debug:
+                        print ('children:', child.children())
                     for label in aliases["preferences"]:
                         # DON't touch things like:
                         # document.getElementById("category").options[Number(widget.preferences.select)].selected = 42;
