@@ -968,7 +968,7 @@ def fetch_shims():
                 print(('Threw :', ex, ' when fetching ', url))
 
 
-class UnicodingError:
+class UnicodingError(Exception):
     pass
 
 utf8_detector = re.compile(r"""^(?:
