@@ -8,20 +8,21 @@ import zipfile
 import codecs
 import json
 import xml.etree.ElementTree as etree
-import logging
 
 try:
     import html5lib
 except ImportError:
-    sys.exit("""\nERROR:\nYou need to install module html5lib to get this working.\n
-        The easy way to do this is to run\neasy_install html5lib\nwhere easy_install
-        is available as part of your Python installation.""")
+    sys.exit("\nERROR:\nYou need to install module html5lib to get this "
+        "working.\nThe easy way to do this is to run\neasy_install "
+        "html5lib\nwhere easy_install is available as part of your Python "
+        "installation.")
 
 try:
     from slimit.parser import Parser as JSParser
 except ImportError:
-    sys.exit("""ERROR: Could not import slimit module\nIf the module is not installed
-        please install it.\ne.g. by running the command 'easy_install slimit'.""")
+    sys.exit("ERROR: Could not import slimit module\nIf the module is not"
+        "installed. Please install it.\ne.g. by running the command"
+        "'easy_install slimit'.")
 
 from astwalker import ASTWalker
 
@@ -37,7 +38,8 @@ optionsdoc = "options.html"
 shim_dirname = "oex_shim"
 shim_fs_path = os.path.dirname(__file__)
 #"http://addons.opera.com/tools/oex_shim/"
-shim_fetch_from = "https://cgit.oslo.osa/cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/"
+shim_fetch_from = ("https://cgit.oslo.osa/"
+        "cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/")
 oex_bg_shim = "%s/operaextensions_background.js" % shim_dirname
 oex_anypage_shim = "%s/operaextensions_popup.js" % shim_dirname
 oex_injscr_shim = "%s/operaextensions_injectedscript.js" % shim_dirname
@@ -60,14 +62,17 @@ class InvalidPackage(Exception):
 class Oex2Nex:
     """
     Converts an Opera extension packaged as .oex to an equivalent .nex file.
-    - parse command line and get options (zip file/oex, maybe the key to use for signing nex)
+    - parse command line and get options (zip file/oex, maybe the key to use
+      for signing nex)
     - the oex file is read from the input using zipfile readers.
     - from the config.xml a DOM tree is made
     - from the above DOM tree a JSON file, manifest.json is made using -
     - name, description, features, access, icons, content nodes
-    - from files matching /includes/* in the zip package get the includes/excludes
+    - from files matching /includes/* in the zip package get the
+      includes/excludes
     - add 'matches' part to the manifest
-    - combine all scripts from index.html, popup.html, options.html to a single file
+    - combine all scripts from index.html, popup.html, options.html to a
+      single file
     - wrap the above in opera.isReady(function () { })
     - add manifest to .nex file
     - sign the .nex file if key is provided (also needs openssl installed)
@@ -86,7 +91,7 @@ class Oex2Nex:
             self._in_file = out_file + '-tmp.oex'
             f_oex = zipfile.ZipFile(self._in_file, "w", zipfile.ZIP_STORED)
             base = os.path.join(in_file, "")
-            for top, dirns, fnames in os.walk(in_file):
+            for top, _dirns, fnames in os.walk(in_file):
                 for fname in fnames:
                     rfn = os.path.join(top, fname)
                     afn = rfn.split(base)[1]
@@ -197,9 +202,10 @@ class Oex2Nex:
         except etree.ParseError, e:
             raise InvalidPackage('Parsing config.xml failed '
                     'with the following error: %s' % e.message)
-        #TODO: Handle localisation (xml:lang), defaultLocale, locales folder etc.
+        #TODO: Handle localisation (xml:lang), defaultLocale, locales folder
+        # etc.
 
-        def _get_best_elem(xmltree, tag):
+        def _get_best_elem(_xmltree, tag):
             """
             Find and return default or English tag's content when config.xml
             has same tag with different xml:lang
@@ -207,10 +213,12 @@ class Oex2Nex:
 
             elems = root.findall("{http://www.w3.org/ns/widgets}" + tag)
             rval = ""
-            # Use some 'en' value of the text content if the element is localised
+            # Use some 'en' value of the text content if the element is
+            # localised
             for it in elems:
                 try:
-                    lang = it.attrib['{http://www.w3.org/XML/1998/namespace}lang']
+                    lang = it.attrib[
+                            '{http://www.w3.org/XML/1998/namespace}lang']
                     if not rval or ((lang is not None) and ("en" in lang)):
                         rval = it.text
                 except KeyError:
@@ -242,7 +250,8 @@ class Oex2Nex:
         accessorigins = []
         for acs in accesslist:
             if (acs.find("[@subdomains]")) is not None:
-                accessorigins.append([acs.attrib["origin"], acs.attrib["subdomains"]])
+                accessorigins.append([acs.attrib["origin"],
+                        acs.attrib["subdomains"]])
             else:
                 accessorigins.append([acs.attrib["origin"], "false"])
         if debug:
@@ -255,7 +264,8 @@ class Oex2Nex:
         for feat in featurelist:
             featurenames.append(feat.attrib["name"])
             if feat.attrib["name"].lower() == "opera:speeddial":
-                sd_url = feat.find("{http://www.w3.org/ns/widgets}param").attrib["value"]
+                sd_url = feat.find("{http://www.w3.org/ns/widgets}param"
+                        ).attrib["value"]
                 is_speeddial_extension = True
                 if debug:
                     print('Speeddial URL: ', sd_url)
@@ -313,7 +323,6 @@ class Oex2Nex:
         includes = []
         excludes = []
         injscrlist = []
-        inj_scr_data = ""
         inj_scripts = ""
         matches = ""
         discards = ""
@@ -330,15 +339,18 @@ class Oex2Nex:
             default_locale = root.attrib["defaultlocale"]
         # not None or empty string
         if default_locale:
+            if debug:
+                print('found default locale attribute: ' + default_locale)
+            # some extensions also keep a manifest.json in locales/def-loc/
+            # we should probably copy over the file from locales to _locales
+            # and use the default_locale entry
+            if ('_locales/' + default_locale + '/messages.json'
+                    not in zf_members):
                 if debug:
-                    print('found default locale attribute: ' + default_locale)
-                # some extensions also keep a manifest.json in locales/def-loc/
-                # we should probably copy over the file from locales to _locales
-                # and use the default_locale entry
-                if '_locales/' + default_locale + '/messages.json' not in zf_members:
-                    if debug:
-                        print('no _locales/' + default_locale + '/messages.json in source zip file, ignoring default locale')
-                    default_locale = ''
+                    print('no _locales/' + default_locale +
+                            '/messages.json in source zip file, '
+                            'ignoring default locale')
+                default_locale = ''
         author_elm = root.find("{http://www.w3.org/ns/widgets}author")
         if author_elm is not None:
             if author_elm.text:
@@ -365,13 +377,15 @@ class Oex2Nex:
             self._zih_file = filename
             # for the background process file (most likely index.html)
             # we need to parse config.xml to get the correct index.html file
-            # then there can be many index files scattered across the locales folders
-            # note that this also need to take care of localisation, which it doesn't now
+            # then there can be many index files scattered across the locales
+            # folders
+            # Note that this also need to take care of localisation, which it
+            # doesn't now
             if filename == indexfile:
                 # all scripts in indexdoc need to be combined into a single .js
-                # file and wrapped in an opera.isReady() function. Also this new
-                # file needs to be put in the indexdoc as a script and others
-                # removed
+                # file and wrapped in an opera.isReady() function. Also this
+                # new file needs to be put in the indexdoc as a script and
+                # others removed
                 file_data = shim_wrap(file_data, "index", prefstore)
             elif filename == popupdoc:
                 # same as with indexdoc
@@ -404,20 +418,23 @@ class Oex2Nex:
                             excludes.append((line[epos + 9:]).strip())
                             f_excludes.append((line[epos + 9:]).strip())
                     if debug:
-                        print(("Includes: ", includes, " Excludes: ", excludes))
+                        print(("Includes: ", includes,
+                               " Excludes: ", excludes))
                 if not len(f_includes):
                     # uses glob pattern not match pattern (<all_urls>)
                     f_includes = ["*"]
-                injscrlist.append({"file": filename, "includes": f_includes, "excludes": f_excludes})
+                injscrlist.append({"file": filename, "includes": f_includes,
+                        "excludes": f_excludes})
                 is_json = False
                 (file_data, is_json) = self._update_scopes(file_data)
                 if not is_json:
-                    file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
+                    file_data = ("opera.isReady(function(){\n"
+                            + file_data + "\n});\n")
             elif filename.endswith(".js"):
-                # do we actually *need* to make sure it's a Unicode string and not a set of
-                # UTF-bytes at this point? AFAIK we don't - as long as we're only appending
-                # ASCII characters, Python doesn't actually care if data is originally
-                # UTF-8 or ASCII
+                # do we actually *need* to make sure it's a Unicode string and
+                # not a set of UTF-bytes at this point? AFAIK we don't - as
+                # long as we're only appending ASCII characters, Python doesn't
+                # actually care if data is originally UTF-8 or ASCII
 
                 # data = str.encode(data, 'utf-8')
                 if debug:
@@ -428,7 +445,8 @@ class Oex2Nex:
                 is_json = False
                 (file_data, is_json) = self._update_scopes(file_data)
                 if not is_json:
-                    file_data = "opera.isReady(function(){\n" + file_data + "\n});\n"
+                    file_data = ("opera.isReady(function(){\n"
+                            + file_data + "\n});\n")
             elif re.search(r'\.x?html?$', filename, flags=re.I):
                 if debug:
                     print("Adding shim for any page to file %s." % filename)
@@ -443,13 +461,17 @@ class Oex2Nex:
                 do_copy = False
                 noloc_filename = None
                 if filename.startswith("locales/en"):
-                    noloc_filename = re.sub(r'^locales/en[a-zA-Z-]{0,2}/', '', filename, count=1)
-                    if noloc_filename != filename and not (noloc_filename in zf_members):
+                    noloc_filename = re.sub(r'^locales/en[a-zA-Z-]{0,2}/', '',
+                            filename, count=1)
+                    if (noloc_filename != filename
+                            and not (noloc_filename in zf_members)):
                         do_copy = True
 
                 if noloc_filename and do_copy:
                     if debug:
-                        print("Copying a localised file : %s to the root of package as : %s" % (filename, noloc_filename))
+                        print("Copying a localised file : "
+                              "%s to the root of package as : %s" % (
+                                    filename, noloc_filename))
                 try:
                     nex.writestr(filename, file_data)
                     if noloc_filename and do_copy:
@@ -514,19 +536,28 @@ class Oex2Nex:
                 manifest += ',\n"browser_action" : {}'
         if has_option:
             manifest += ',\n"options_page" : "options.html"'
-        # default_locale should be set in manifest.json *only* if there is a corresponding _locales/foo folder in the input
+        # default_locale should be set in manifest.json *only* if there is a
+        # corresponding _locales/foo folder in the input
         if default_locale:
             manifest += ',\n"default_locale" : "' + default_locale + '"'
         if has_injscrs:
             # create separate entries for all injected scripts
             content_scripts = ""
             for cs in injscrlist:
-                content_scripts += '\n{"js": ["' + oex_injscr_shim + '", ' + jenc.encode(cs["file"]) + '], "matches": ["<all_urls>"], "include_globs": ' + jenc.encode(cs["includes"]) + ', "exclude_globs": ' + jenc.encode(cs["excludes"]) + ', "run_at": "document_start", "all_frames" : true},'
+                content_scripts += ('\n{"js": ["' + oex_injscr_shim + '", '
+                        + jenc.encode(cs["file"])
+                        + '], "matches": ["<all_urls>"], "include_globs": '
+                        + jenc.encode(cs["includes"])
+                        + ', "exclude_globs": '
+                        + jenc.encode(cs["excludes"])
+                        + ', "run_at": "document_start", "all_frames" : true},'
+                )
             content_scripts = content_scripts[:-1]
             manifest += ',\n"content_scripts": [' + content_scripts + ']'
 
         # add web_accessible_resources
-        # all files except the following: manifest.json, indexdoc, popupdoc, optionsdoc, anything else?
+        # all files except the following: manifest.json, indexdoc, popupdoc,
+        # optionsdoc, anything else?
         if resources:
             resources = resources[:-1]
             if debug:
@@ -540,7 +571,9 @@ class Oex2Nex:
         manifest += ',\n"permissions" : [' + self._get_permissions() + ']'
         if is_speeddial_extension:
             manifest += ',\n"speeddial" : {"url": "' + sd_url + '"}'
-        manifest += ',\n"content_security_policy": "script-src \'self\' \'unsafe-eval\'; object-src \'unsafe-eval\';"'
+        manifest += ',\n"content_security_policy": '
+        manifest += '"script-src \'self\' \'unsafe-eval\';'
+        manifest += ' object-src \'unsafe-eval\';"'
         manifest += '\n}\n'
 
         if debug:
@@ -566,7 +599,8 @@ class Oex2Nex:
  var s = getParam('href'), w = getParam('w'), h = getParam('h');
  if(s !== "") { document.querySelector('iframe').src = window.atob(s); }
  if(w !== "") { document.body.style.minWidth = w.replace(/\D/g,'') + "px"; }
- if(h !== "") { document.body.style.minHeight = h.replace(/\D/g,'') + "px"; }""")
+ if(h !== "") { document.body.style.minHeight = h.replace(/\D/g,'') + "px"; }
+""")
 
     def _update_scopes(self, scriptdata):
         """ Attempt to parse the script text and do some variable scoping fixes
@@ -590,11 +624,18 @@ class Oex2Nex:
                     return (scriptdata, is_json)
 
         walker = ASTWalker(debug)
-        aliases = {"window": ["window"], "opera": ["opera", "window.opera"], "widget": ["widget", "window.widget"], "extension": ["opera.extension"], "preferences": ["widget.preferences", "window.widget.preferences"]}
+        aliases = {
+            "window": ["window"],
+            "opera": ["opera", "window.opera"],
+            "widget": ["widget", "window.widget"],
+            "extension": ["opera.extension"],
+            "preferences": ["widget.preferences", "window.widget.preferences"],
+        }
         scriptdata = jstree.to_ecma()
         for rval in walker._get_replacements(jstree, aliases):
             # if debug: print(('walker ret:', rval))
-            if isinstance(rval, list) and rval != [] and isinstance(rval[0], dict):
+            if (isinstance(rval, list) and rval != []
+                    and isinstance(rval[0], dict)):
                 rdict = rval[0]
             elif isinstance(rval, dict):
                 rdict = rval
@@ -605,14 +646,15 @@ class Oex2Nex:
                     if 'text' in rdict[key] and 'textnew' in rdict[key]:
 						# NOTE: replaces throughout the script text; so be
 						# specific in what we feed this
-                        scriptdata = scriptdata.replace(rdict[key]['text'], rdict[key]['textnew'])
+                        scriptdata = scriptdata.replace(rdict[key]['text'],
+                                rdict[key]['textnew'])
             except Exception as e:
                 print ("Exception while fixing script:", e, key, scriptdata)
-                pass
 
         # defining this in here so we can share the jstree and walker instances
         def find_permissions(tree):
             """Looks for possible permissions to be added to manifest.json"""
+            # XXX The tree param is unused. For future extension? -hanst
             self._add_permission(walker.find_apicall(jstree, 'create',
                                                              'getAll',
                                                              'getFocused',
@@ -639,7 +681,8 @@ class Oex2Nex:
             except IOError as e:
                 self._oex.close()
                 self._nex.close()
-                raise IOError(("Extracting nex file to the directory failed: %s",
+                raise IOError(
+                    ("Extracting nex file to the directory failed: %s",
                     "\nGot: %s\nIs there a file by the same name?") %
                         self._out_file, e.message)
 
@@ -659,15 +702,17 @@ class Oex2Nex:
         Specifically adds the relevant shim script, wraps all script text
         within opera.isReady() methods etc. """
 
-        htmlparser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
+        htmlparser = html5lib.HTMLParser(
+                tree=html5lib.treebuilders.getTreeBuilder("dom"))
         domwalker = html5lib.treewalkers.getTreeWalker("dom")
-        serializer = html5lib.serializer.HTMLSerializer(omit_optional_tags=False, quote_attr_values=True, strip_whitespace=True, use_trailing_solidus=True)
+        serializer = html5lib.serializer.HTMLSerializer(
+                omit_optional_tags=False, quote_attr_values=True,
+                strip_whitespace=True, use_trailing_solidus=True)
         doc = htmlparser.parse(html, "utf-8")
-        scriptdata = ""
         inlinescrdata = ""
-        oex = self._oex
         nex = self._nex
-        # FIXME: use the correct base for the @src (mostly this is the root [''])
+        # FIXME: use the correct base for the @src (mostly this is the root
+        # [''])
         # Remove scripts only if we are merging all of them
 
         def add_dom_prefs(doc, prefs):
@@ -680,11 +725,17 @@ class Oex2Nex:
                 for key in prefs:
                     cur_pref_val = jenc.encode(prefs[key]).decode('utf-8')
                     cur_pref = jenc.encode(key).decode('utf-8')
-                    pref_str += 'widget.preferences.setItem(' + cur_pref + ', ' + cur_pref_val + ');\n'
+                    pref_str += ('widget.preferences.setItem(' + cur_pref + ', '
+                            + cur_pref_val + ');\n')
                 if debug:
                     print("Preferences stringified: " + pref_str)
                 if pref_str:
-                    pref_str = 'if (!widget.preferences.getItem("_OPERA_INTERNAL_defaultPrefsSet")){\n%s}\nwidget.preferences.setItem("_OPERA_INTERNAL_defaultPrefsSet", true);\n' % (pref_str)
+
+                    pref_str = ('if (!widget.preferences.getItem('
+                             '"_OPERA_INTERNAL_defaultPrefsSet"))'
+                             '{\n%s}\nwidget.preferences.setItem('
+                             '"_OPERA_INTERNAL_defaultPrefsSet", true);\n') % (
+                            pref_str)
                     p_scr = doc.createElement("script")
                     p_scr_src = "exported_prefs.js"
                     p_scr.setAttribute("src", p_scr_src)
@@ -693,7 +744,8 @@ class Oex2Nex:
                         head = head[0]
                         head.insertBefore(p_scr, head.firstChild)
                     else:
-                        doc.documentElement.insertBefore(p_scr, doc.documentElement.firstChild)
+                        doc.documentElement.insertBefore(p_scr,
+                                doc.documentElement.firstChild)
 
                 return (doc, pref_str, p_scr_src)
 
@@ -711,21 +763,26 @@ class Oex2Nex:
                     script_data = script_data.strip()
                     if script_data:
                         is_json = False
-                        (script_data, is_json) = self._update_scopes(script_data)
+                        (script_data, is_json) = self._update_scopes(
+                                script_data)
                         if not is_json:
-                            script_data = "opera.isReady(function(){\n" + script_data + "\n});\n"
+                            script_data = "opera.isReady(function(){\n" \
+                                    + script_data + "\n});\n"
                         script_count += 1
                         iscr = doc.createElement("script")
-                        iscr_src = "inline_script_" + file_type + "_" + str(script_count) + ".js"
+                        iscr_src = "inline_script_" + file_type + "_" \
+                                + str(script_count) + ".js"
                         iscr.setAttribute("src", iscr_src)
                         script.parentNode.replaceChild(iscr, script)
                         try:
                             nex.writestr(iscr_src, script_data)
                         except UnicodeEncodeError:
-                            # oops non-ASCII bytes found. *Presumably* we have Unicode already at
-                            # this point so we can just encode it as UTF-8..
-                            # If we at this point somehow end up with data that's already UTF-8
-                            # encoded, we'll be in trouble.. will that throw or just create mojibake
+                            # oops non-ASCII bytes found. *Presumably* we have
+                            # Unicode already at this point so we can just
+                            # encode it as UTF-8..
+                            # If we at this point somehow end up with data
+                            # that's already UTF-8 encoded, we'll be in
+                            # trouble.. will that throw or just create mojibake
                             # in the resulting extension, I wonder?
                             nex.writestr(iscr_src, script_data.encode('utf-8'))
 
@@ -737,7 +794,8 @@ class Oex2Nex:
                 nex.writestr(oex_bg_shim, bgdata)
             if prefs:
                 (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
-                pref_sdata = "opera.isReady(function(){\n" + pref_sdata + "\n});\n"
+                pref_sdata = "opera.isReady(function(){\n" \
+                        + pref_sdata + "\n});\n"
                 nex.writestr(pref_src, pref_sdata)
         # add the 'anypage.shim' to all content we receive here:
         else:
@@ -768,11 +826,13 @@ class Oex2Nex:
             if inlinescrdata:
                 head.appendChild(inscr)
         else:
-            doc.documentElement.insertBefore(shim, doc.documentElement.firstChild)
+            doc.documentElement.insertBefore(shim,
+                    doc.documentElement.firstChild)
             if inlinescrdata:
                 doc.documentElement.appendChild(inscr)
         # scripts are read and written here only if they are merged
-        # if not, they are varscopefixed and added in the routine where other files are added.
+        # if not, they are varscopefixed and added in the routine where other
+        # files are added.
         return serializer.render(domwalker(doc))
 
     def signnex(self):
@@ -793,11 +853,15 @@ class Oex2Nex:
             password = sys.stdin.readline()
             if password[-1] == "\n":
                 password = password[:-1]
-            args = shlex.split('openssl pkey -outform DER -pubout -out pubkey.der -in "' + key_file + '" -passin "pass:' + password + '"')
+            args = shlex.split('openssl pkey -outform DER -pubout '
+                    '-out pubkey.der -in "' + key_file + '" -passin "pass:'
+                    + password + '"')
             if debug:
                 print(args)
             subprocess.call(args)
-            args = shlex.split('openssl dgst -sha1 -binary -sign "' + key_file + '" -passin "pass:' + password + '" -out "' + out_file + '.sig" "' + out_file + '"')
+            args = shlex.split('openssl dgst -sha1 -binary -sign "' + key_file
+                    + '" -passin "pass:' + password + '" -out "' + out_file
+                    + '.sig" "' + out_file + '"')
             if debug:
                 print(args)
             subprocess.call(args)
@@ -844,7 +908,11 @@ def fetch_shims():
     """ Download shim files from remote server """
     import urllib2
     attempts = 0
-    shims = iter(("operaextensions_background.js", "operaextensions_popup.js", "operaextensions_injectedscript.js"))
+    shims = iter((
+            "operaextensions_background.js",
+            "operaextensions_popup.js",
+            "operaextensions_injectedscript.js",
+    ))
     shim_dir = os.path.join(shim_fs_path, shim_dirname)
     shim = next(shims)
     url = shim_fetch_from + shim
@@ -874,7 +942,8 @@ def fetch_shims():
         except urllib2.HTTPError as ex:
             if ex.code == 401:
                 if debug:
-                    print(('HTTP Authentication required:', ex.code, ex.msg, ex.hdrs))
+                    print(('HTTP Authentication required:', ex.code, ex.msg,
+                            ex.hdrs))
                 auth_type = ex.hdrs["WWW-Authenticate"].split()[0]
                 realm = ex.hdrs["WWW-Authenticate"].split('=')[1]
                 realm = realm.strip('"')
@@ -887,7 +956,8 @@ def fetch_shims():
                     print("Enter password:")
                     pwd = sys.stdin.readline()
                     pwd = pwd.strip("\n")
-                    auth_handler.add_password(realm=realm, uri=shim_fetch_from, user=usr, passwd=pwd)
+                    auth_handler.add_password(realm=realm, uri=shim_fetch_from,
+                            user=usr, passwd=pwd)
                     opener = urllib2.build_opener(auth_handler)
                     urllib2.install_opener(opener)
                     continue
@@ -930,24 +1000,30 @@ def unicoder(string):
         return unicode(string, 'latin_1')
 
     except UnicodingError:
-        raise UnicodingError("still don't recognise encoding after trying do guess common english encodings")
+        raise UnicodingError("Still don't recognise encoding after trying do "
+                "guess common english encodings")
 
 
 def main(args=None):
     import argparse
     if len(sys.argv) < 3:
         sys.argv.append('-h')
-    argparser = argparse.ArgumentParser(description="Convert an Opera OEX extension into an Opera NEX extension")
-    argparser.add_argument('-s', '--key', help="Sign the nex package with the "
-            "provided key (PEM) file. The signed package is named <file>.signed.nex.")
+    argparser = argparse.ArgumentParser(description="Convert an Opera OEX "
+            "extension into an Opera NEX extension")
+    argparser.add_argument('-s', '--key',
+            help="Sign the nex package with the provided key (PEM) file. The "
+            "signed package is named <file>.signed.nex.")
     argparser.add_argument('in_file', nargs='?', help="Path to an .oex file or "
             "a directory where its extracted contents are available")
-    argparser.add_argument('out_file', nargs='?', help="Output file path (a .nex file or a directory)")
+    argparser.add_argument('out_file', nargs='?',
+            help="Output file path (a .nex file or a directory)")
     argparser.add_argument('-x', '--outdir', action='store_true', default=False,
             help="Create or use a directory for output")
-    argparser.add_argument('-d', '--debug', default=False, action='store_true', help="Debug mode; quite verbose")
+    argparser.add_argument('-d', '--debug', default=False, action='store_true',
+            help="Debug mode; quite verbose")
     argparser.add_argument('-f', '--fetch', default=False, action='store_true',
-            help="Fetch the latest oex_shim scripts and put them in oex_shim directory.")
+            help="Fetch the latest oex_shim scripts and put them in oex_shim "
+                "directory.")
 
     args = argparser.parse_args()
     global debug
