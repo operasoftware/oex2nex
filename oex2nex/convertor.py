@@ -104,6 +104,7 @@ class Oex2Nex:
         self._oex = None
         self._nex = None
         self._zih_file = None
+        self.warnings = []
 
     def readoex(self):
         """
@@ -494,7 +495,7 @@ class Oex2Nex:
                     nex.writestr(oex_injscr_shim, inj_data)
                     injfh.close()
                 else:
-                    print(("Could not open " + oex_injscr_shim))
+                    self.warnings.append("Could not open " + oex_injscr_shim)
 
             inj_scripts = '"' + oex_injscr_shim + '", ' + inj_scripts
 
@@ -618,7 +619,7 @@ class Oex2Nex:
                     is_json = True
                     return (scriptdata, is_json)
                 except:
-                    print ("ERROR: Script parsing failed. "
+                    self.warnings.append("Script parsing failed. "
                             "This script might need manual fixing."
                             "\nFile: %s\n" % self._zih_file)
                     return (scriptdata, is_json)
@@ -649,7 +650,9 @@ class Oex2Nex:
                         scriptdata = scriptdata.replace(rdict[key]['text'],
                                 rdict[key]['textnew'])
             except Exception as e:
-                print ("Exception while fixing script:", e, key, scriptdata)
+                warning = "Exception while fixing script: %s %s %s" % (
+                        e, key, scriptdata)
+                self.warnings.append(warning)
 
         # defining this in here so we can share the jstree and walker instances
         def find_permissions(tree):
@@ -670,6 +673,8 @@ class Oex2Nex:
 
     def convert(self):
         """ Public method which does the real work """
+
+        self.warnings = []
         self.readoex()
         self._convert()
         # extract file to the specified directory
@@ -693,8 +698,6 @@ class Oex2Nex:
 
         if self._key_file:
             self.signnex()
-
-        print("Done!")
 
     def _shim_wrap(self, html, file_type="index", prefs=None):
         """
@@ -1036,6 +1039,9 @@ def main(args=None):
         convertor.convert()
     except (ValueError, InvalidPackage, IOError)  as e:
         sys.exit("ERROR: %s" % e.message)
+
+    if convertor.warnings:
+        print "\n".join(["Warning: " + w for w in convertor.warnings])
 
 if __name__ == "__main__":
     main()
