@@ -356,9 +356,11 @@ class Oex2Nex:
         if author_elm is not None:
             if author_elm.text:
                 author_name = author_elm.text
+                author_url = author_elm.attrib.get("href", "")
                 has_author = True
         if debug:
             print("Author name: ", author_name)
+            print("Author URL: ", author_url)
 
         for filename in zf_members:
             # dropping the _locales content if default_locale is not defined
@@ -522,8 +524,9 @@ class Oex2Nex:
 
         manifest = '{\n"name": ' + name
         if has_author:
-            manifest += ',\n"developer": "' + author_name + '"'
-        manifest += ',\n"description": ' + description
+            manifest += ',\n"developer": {"name" : "' + author_name + '", '
+            manifest += '"url" : "' + author_url + '"}'
+        manifest += ',\n"description" : ' + description
         manifest += ',\n"manifest_version" : 2,\n"version" : "' + version
         manifest += '",\n"background" : {"page" : "' + indexfile + '"}'
         if has_icons:

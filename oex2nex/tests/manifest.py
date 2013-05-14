@@ -220,17 +220,21 @@ class TestManifestDeveloperAttr(unittest.TestCase):
         cls.manifest = nex.open("manifest.json", "r").read()
         cls.json = json.loads(cls.manifest)
         cls.developer = cls.json.get("developer")
+        cls.name = cls.developer.get("name")
+        cls.url = cls.developer.get("url")
 
     @classmethod
     def tearDownClass(cls):
         """Clean up"""
         subprocess.call("rm -r tests/fixtures/converted/*", shell=True)
 
-    def test_is_unicode(self):
-        self.assertIsInstance(self.developer, unicode)
+    def test_is_dict(self):
+        self.assertIsInstance(self.developer, dict)
 
     def test_is_andreas(self):
-        self.assertEqual(self.developer, "andreasbovens")
+        self.assertEqual(self.name, "andreasbovens")
+        self.assertEqual(self.url, "http://www.twitter.com/andreasbovens/")
+
 
 class TestManifestEmptyDeveloperAttr(unittest.TestCase):
     @classmethod
@@ -250,6 +254,3 @@ class TestManifestEmptyDeveloperAttr(unittest.TestCase):
 
     def test_is_none(self):
         self.assertIsNone(self.developer)
-
-    def test_is_not_andreas(self):
-        self.assertNotEqual(self.developer, "andreasbovens")
