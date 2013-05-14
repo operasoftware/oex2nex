@@ -358,7 +358,7 @@ class Oex2Nex:
                 author_name = author_elm.text
                 author_url = author_elm.attrib.get("href", "")
                 has_author = True
-        if debug:
+        if has_author and debug:
             print("Author name: ", author_name)
             print("Author URL: ", author_url)
 
