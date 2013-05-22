@@ -239,18 +239,17 @@ class Oex2Nex:
             return rval
 
         name = _get_best_elem(root, "name")
-        if root.find("[@version]") is not None:
+
+        if "version" in root.attrib:
             version = self._normalize_version(root.attrib["version"])
         else:
             version = "1.0.0.1"
-        cid = root.find("[@id]")
-        if cid is not None:
-            cid = root.attrib["id"]
+
         description = _get_best_elem(root, "description")
         accesslist = root.findall("{http://www.w3.org/ns/widgets}access")
         accessorigins = []
         for acs in accesslist:
-            if (acs.find("[@subdomains]")) is not None:
+            if "subdomains" in acs.attrib:
                 accessorigins.append([acs.attrib["origin"],
                         acs.attrib["subdomains"]])
             else:
@@ -285,7 +284,7 @@ class Oex2Nex:
         indexfile = indexdoc
         content = root.find("{http://www.w3.org/ns/widgets}content")
         if content is not None:
-            if content.find("[@src]") is not None:
+            if "src" in content.attrib:
                 indexfile = content.attrib["src"]
         has_icons = False
         icon_elms = root.findall("{http://www.w3.org/ns/widgets}icon")
@@ -335,8 +334,8 @@ class Oex2Nex:
         zf_members = oex.namelist()
         # default_locale should be set in manifest.json *only* if there is a
         # corresponding _locales/foo folder in the input
-        default_locale = root.find("[@defaultlocale]")
-        if default_locale is not None:
+        default_locale = None
+        if "defaultlocale" in root.attrib:
             default_locale = root.attrib["defaultlocale"]
         # not None or empty string
         if default_locale:
