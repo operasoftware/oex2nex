@@ -1040,7 +1040,7 @@ def main(args=None):
     try:
         convertor = Oex2Nex(args.in_file, args.out_file, args.key, args.outdir)
         convertor.convert()
-    except (ValueError, InvalidPackage, IOError)  as e:
+    except (ValueError, InvalidPackage, IOError, UnicodingError)  as e:
         sys.exit("ERROR: %s" % e.message)
 
     if convertor.warnings:
