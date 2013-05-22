@@ -1,6 +1,6 @@
 # Oex2nex Convertor
 
-The oex2nex convertor converts an Opera oex extension into an Opera 14 nex extension, using the [oex-shim](I assume this will be on GitHub too?) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
+The oex2nex convertor converts an Opera oex extension into an Opera 15 nex extension, using the [oex-shim](I assume this will be on GitHub too?) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
 
 ## What does this actually do?
 
@@ -27,7 +27,7 @@ optional arguments:
   -x, --outdir       Create or use a directory for output
   -d, --debug        Debug mode; quite verbose
   -f, --fetch        Fetch the latest oex_shim scripts and put them in
-                     oex_shim directory.                                          
+                     oex_shim directory.
 ```
 
 For example, to convert an Opera `oex` extension dino-comics.oex into a `nex` compatible with Opera 14, but output the exension's contents as a directory (useful for tweaking things):
@@ -61,7 +61,7 @@ The following OEX and Opera APIs aren't supported by the oex-shim:
 
 ### Icons
 
-It's possible that the icons that end up in your NEX package aren't the ideal resolution. Here's roughly how icons are selected when parsing your config.xml and OEX container: 
+It's possible that the icons that end up in your NEX package aren't the ideal resolution. Here's roughly how icons are selected when parsing your config.xml and OEX container:
 
 * If there is an `<icon>` element with a `width` attribute of 16, 48, or 128, grab those.
 * IF NOT, if there is the number 16, 48, or 128 somewhere in the file name, e.g., `pretty_icon_16px.png`, grab those.
