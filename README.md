@@ -1,6 +1,6 @@
 # Oex2nex Convertor
 
-The oex2nex convertor converts an Opera oex extension into an Opera 15 nex extension, using the [operaextensions.js](https://github.com/operasoftware/operaextensions.js) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
+The oex2nex convertor converts an Opera oex extension into an Opera 15 nex extension, using the [operaextensions.js](https://github.com/operasoftware/operaextensions.js) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](http://dev.opera.com/extension-docs/).
 
 ## What does this actually do?
 
