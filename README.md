@@ -73,3 +73,19 @@ So if you notice that the icons aren't quite right in the generated NEX containe
 ### JavaScript Parsing
 
 We use [Slimit](https://github.com/rspivak/slimit) to parse OEX JavaScript files. While the vast majority of extensions that we've converted work without an issue—it's possible that there is [some](https://github.com/rspivak/slimit/issues/42) [syntax](https://github.com/rspivak/slimit/pull/45) or [construct](https://github.com/rspivak/slimit/pull/44) that Slimit fails to handle correctly. In these cases, you can open an issue on this project and we can investigate further.
+
+## License
+
+Copyright 2013 Opera Software
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
