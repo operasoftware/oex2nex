@@ -1,6 +1,6 @@
 # Oex2nex Convertor
 
-The oex2nex convertor converts an Opera oex extension into an Opera 15 nex extension, using the [oex-shim](I assume this will be on GitHub too?) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
+The oex2nex convertor converts an Opera oex extension into an Opera 15 nex extension, using the [operaextensions.js](https://github.com/operasoftware/operaextensions.js) library. Extension authors can use this tool as a stopgap solution to bring existing content to the [new Opera extension architecture](link to dev.opera article explaining this).
 
 ## What does this actually do?
 
@@ -35,6 +35,7 @@ For example, to convert an Opera `oex` extension dino-comics.oex into a `nex` co
 ```
 $ python oex2nex/convertor.py -xd path/to/dino-comics.oex path/to/put/dino-comics
 ```
+You can now either package and sign the extension from the Opera Extensions Manager, or load it as a developer extension for testing.
 
 ### Installing as a package
 
@@ -67,7 +68,7 @@ It's possible that the icons that end up in your NEX package aren't the ideal re
 * IF NOT, if there is the number 16, 48, or 128 somewhere in the file name, e.g., `pretty_icon_16px.png`, grab those.
 * IF NOT, grab the only icon and use that as the 128 icon.
 
-So if you notice that the icons aren't quite right in the generated NEX container, you should modify the manifest.json to point to the correct assetes.
+So if you notice that the icons aren't quite right in the generated NEX container, you should modify the `manifest.json` to point to the correct assets.
 
 ### JavaScript Parsing
 
