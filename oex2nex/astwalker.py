@@ -88,8 +88,8 @@ class ASTWalker(NodeVisitor):
                     # also need to check for things like;
                     # var prefs = widget.preferences; ...; prefs.foo = 34;
                     # (we need to convert the .foo to setItem('foo', 34)
-                    if debug:
-                        print ('children:', child.children())
+#                    if debug:
+#                        print ('children:', child.children())
                     for label in aliases["preferences"]:
                         # DON't touch things like:
                         # document.getElementById("category").options[Number(widget.preferences.select)].selected = 42;
@@ -128,10 +128,38 @@ class ASTWalker(NodeVisitor):
                                 print("Entered preferences finder but failed to find one; code: prefix:", dada, ", key:", daid, ":value:", val, child.to_ecma())
                             # not much chance that we would again match at the same place
                             break
+
+                if isinstance(child, ast.FunctionCall):
+                    ce = child.to_ecma()
+                    cie = child.identifier.to_ecma()
+                    if cie == "eval" or cie.endswith(".eval"):
+                        # change eval to eval.call to fix the scope of the call
+                        # Various cases that we are looking at:
+                        # eval('foo')
+                        # window.eval('foo')
+                        # eval(function () {bar();});
+                        # eval(new String("foo bar baz"));
+                        # var w  = window;
+                        # w.eval(new String("foo bar baz"));
+                        # cef = cef.replace(cie, "%s['call']" % (cie), 1)
+                        if debug:
+                            print ("Found eval call: attempting to fix that.")
+                        chs = child.children()
+                        if len(chs) == 2 and chs[1] is not None:
+                            cief = chs[0].to_ecma() #identifier part
+                            cief = "%s['call']" % cief # change to window.eval.call
+                            cref = chs[1].to_ecma()
+                            cef = '%s (window, %s)' % (cief, cref)
+                            print 'eval fixed:', cef
+                            yield [{"eval": {"scope": scope, "node": child,
+                                "text": ce, "textnew": cef}}]
+
                 if (scope == 0) and isinstance(child, ast.FuncDecl):
                     # replace as follows -
                     # function foo() {} -> var foo = window['foo'] = function () { }
                     fe = child.to_ecma()
+                    if debug:
+                        print ('Top level func decl:', fe)
                     # Replace only the first (else risk removing function identifiers inside the main function)
                     # fef = re.sub(r'function\s+(\w+)\s*\(', 'function (', fe, count=1)
                     # fef = 'var ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = '  + fef
@@ -142,9 +170,11 @@ class ASTWalker(NodeVisitor):
                     fef = fe + '\nvar ' + child.identifier.value + ' = window["' + child.identifier.value + '"] = ' + child.identifier.value + ';'
                     yield [{"function-id": {"scope": scope, "node": child,
                             "text": fe, "textnew": fef}}]
+
                 # Descend
                 for subchild in self._get_replacements(child, aliases, scope + 1):
                     yield subchild
+
         except Exception as e:
             print("ERROR: Threw exception in script fixer. The scripts in the"
                   "nex package might not work correctly.", e)
