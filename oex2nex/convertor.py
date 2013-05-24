@@ -10,6 +10,12 @@ import json
 import xml.etree.ElementTree as etree
 
 try:
+  from xml.etree.ElementTree import ParseError as ParseError
+except ImportError:
+  # For Python <=2.6
+  from xml.parsers.expat import ExpatError as ParseError
+
+try:
     import html5lib
 except ImportError:
     sys.exit("\nERROR:\nYou need to install module html5lib to get this "
@@ -200,7 +206,7 @@ class Oex2Nex:
         try:
             # xml.etree requires UTF-8 input
             root = etree.fromstring(configStr.encode('UTF-8'))
-        except etree.ParseError, e:
+        except ParseError, e:
             raise InvalidPackage('Parsing config.xml failed '
                     'with the following error: %s' % e.message)
         #TODO: Handle localisation (xml:lang), defaultLocale, locales folder
