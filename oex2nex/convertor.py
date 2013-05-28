@@ -36,22 +36,22 @@ from astwalker import ASTWalker
 debug = False
 # Only the default if we don't find any from content element
 # Yeah, this could be index.{htm,html,xhtm,xhtml,svg}
-indexdoc = "index.html"
+indexdoc = u"index.html"
 # The best place to get the popup file is where it is added in the background
 # process as a toolbaritem, but ...
-popupdoc = "popup.html"
-optionsdoc = "options.html"
-shim_dirname = "oex_shim"
+popupdoc = u"popup.html"
+optionsdoc = u"options.html"
+shim_dirname = u"oex_shim"
 shim_fs_path = os.path.dirname(__file__)
 #"http://addons.opera.com/tools/oex_shim/"
-shim_fetch_from = ("https://cgit.oslo.osa/"
+shim_fetch_from = (u"https://cgit.oslo.osa/"
         "cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/")
-oex_bg_shim = "%s/operaextensions_background.js" % shim_dirname
-oex_anypage_shim = "%s/operaextensions_popup.js" % shim_dirname
-oex_injscr_shim = "%s/operaextensions_injectedscript.js" % shim_dirname
-oex_resource_loader = "%s/popup_resourceloader" % shim_dirname
+oex_bg_shim = u"%s/operaextensions_background.js" % shim_dirname
+oex_anypage_shim = u"%s/operaextensions_popup.js" % shim_dirname
+oex_injscr_shim = u"%s/operaextensions_injectedscript.js" % shim_dirname
+oex_resource_loader = u"%s/popup_resourceloader" % shim_dirname
 # TODO: add a smart way of adding these following default permissions
-permissions = ["http://*/*", "https://*/*", "storage"]
+permissions = [u"http://*/*", u"https://*/*", u"storage"]
 has_button = False
 
 #Header for Chrome 24(?) compatible .crx package
@@ -707,7 +707,7 @@ class Oex2Nex:
         if self._key_file:
             self.signnex()
 
-    def _shim_wrap(self, html, file_type="index", prefs=None):
+    def _shim_wrap(self, html, file_type=u"index", prefs=None):
         """
         Applies certain corrections to the HTML source passed to this method.
         Specifically adds the relevant shim script, wraps all script text
@@ -719,8 +719,8 @@ class Oex2Nex:
         serializer = html5lib.serializer.HTMLSerializer(
                 omit_optional_tags=False, quote_attr_values=True,
                 strip_whitespace=True, use_trailing_solidus=True)
-        doc = htmlparser.parse(html, "utf-8")
-        inlinescrdata = ""
+        doc = htmlparser.parse(html)
+        inlinescrdata = u""
         nex = self._nex
         # FIXME: use the correct base for the @src (mostly this is the root
         # [''])
@@ -747,10 +747,10 @@ class Oex2Nex:
                              '{\n%s}\nwidget.preferences.setItem('
                              '"_OPERA_INTERNAL_defaultPrefsSet", true);\n') % (
                             pref_str)
-                    p_scr = doc.createElement("script")
-                    p_scr_src = "exported_prefs.js"
-                    p_scr.setAttribute("src", p_scr_src)
-                    head = doc.getElementsByTagName("head")
+                    p_scr = doc.createElementNS(u"http://www.w3.org/1999/xhtml", u"script")
+                    p_scr_src = u"exported_prefs.js"
+                    p_scr.setAttributeNS(u"http://www.w3.org/1999/xhtml", u"src", p_scr_src)
+                    head = doc.getElementsByTagName(u"head")
                     if head is not None and head != []:
                         head = head[0]
                         head.insertBefore(p_scr, head.firstChild)
@@ -764,8 +764,8 @@ class Oex2Nex:
 
         # move inline scripts into a new external script
         script_count = 0
-        for script in doc.getElementsByTagName("script"):
-            script_name = script.getAttribute("src")
+        for script in doc.getElementsByTagName(u"script"):
+            script_name = script.getAttribute(u"src")
             if not script_name:
                 if (script.childNodes != []):
                     script_data = ""
@@ -777,13 +777,14 @@ class Oex2Nex:
                         (script_data, is_json) = self._update_scopes(
                                 script_data)
                         if not is_json:
-                            script_data = "opera.isReady(function(){\n" \
+                            script_data = u"opera.isReady(function(){\n" \
                                     + script_data + "\n});\n"
                         script_count += 1
-                        iscr = doc.createElement("script")
-                        iscr_src = "inline_script_" + file_type + "_" \
+                        print doc
+                        iscr = doc.createElementNS(u"http://www.w3.org/1999/xhtml", u"script")
+                        iscr_src = u"inline_script_" + file_type + "_" \
                                 + str(script_count) + ".js"
-                        iscr.setAttribute("src", iscr_src)
+                        iscr.setAttributeNS(u"http://www.w3.org/1999/xhtml", u"src", iscr_src)
                         script.parentNode.replaceChild(iscr, script)
                         try:
                             nex.writestr(iscr_src, script_data)
@@ -797,15 +798,15 @@ class Oex2Nex:
                             # in the resulting extension, I wonder?
                             nex.writestr(iscr_src, script_data.encode('utf-8'))
 
-        shim = doc.createElement("script")
+        shim = doc.createElementNS(u"http://www.w3.org/1999/xhtml", u"script")
         if file_type == "index":
-            shim.setAttribute("src", oex_bg_shim)
+            shim.setAttributeNS(u"http://www.w3.org/1999/xhtml", u"src", oex_bg_shim)
             bgdata = self._get_shim_data(oex_bg_shim)
             if oex_bg_shim not in nex.namelist():
                 nex.writestr(oex_bg_shim, bgdata)
             if prefs:
                 (doc, pref_sdata, pref_src) = add_dom_prefs(doc, prefs)
-                pref_sdata = "opera.isReady(function(){\n" \
+                pref_sdata = u"opera.isReady(function(){\n" \
                         + pref_sdata + "\n});\n"
                 nex.writestr(pref_src, pref_sdata)
         # add the 'anypage.shim' to all content we receive here:
@@ -814,23 +815,23 @@ class Oex2Nex:
             # Hopefully there would be only one popup.html or options.html in
             # the package (Localisation ~!~!~!~)
 
-            shim.setAttribute("src", oex_anypage_shim)
+            shim.setAttributeNS(u"http://www.w3.org/1999/xhtml", u"src", oex_anypage_shim)
             ppdata = self._get_shim_data(oex_anypage_shim)
             # add popup shim only if it hasn't been added already
             if oex_anypage_shim not in nex.namelist():
                 nex.writestr(oex_anypage_shim, ppdata)
 
-        tx2 = doc.createTextNode(" ")
+        tx2 = doc.createTextNode(u" ")
         shim.appendChild(tx2)
 
         if inlinescrdata:
-            inscr = doc.createElement("script")
-            inscr.setAttribute("src", "allinlines_" + file_type + ".js")
-            ti = doc.createTextNode(" ")
+            inscr = doc.createElement(u"script", u"http://www.w3.org/1999/xhtml")
+            inscr.setAttributeNS(u"http://www.w3.org/1999/xhtml", u"src", u"allinlines_" + file_type + ".js")
+            ti = doc.createTextNode(u" ")
             inscr.appendChild(ti)
 
         # add scripts as necessary
-        head = doc.getElementsByTagName("head")
+        head = doc.getElementsByTagName(u"head")
         if head is not None and head != []:
             head = head[0]
             head.insertBefore(shim, head.firstChild)
