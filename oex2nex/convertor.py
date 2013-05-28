@@ -262,23 +262,40 @@ class Oex2Nex:
                 accessorigins.append([acs.attrib["origin"], "false"])
         if debug:
             print(("Access origins:", accessorigins))
+
+        ### Handle feature elements
+
         has_features = False
         featurelist = root.findall("{http://www.w3.org/ns/widgets}feature")
         featurenames = []
         sd_url = ""
         is_speeddial_extension = False
+
         for feat in featurelist:
+
             featurenames.append(feat.attrib["name"])
+
             if feat.attrib["name"].lower() == "opera:speeddial":
-                sd_url = feat.find("{http://www.w3.org/ns/widgets}param"
-                        ).attrib["value"]
-                is_speeddial_extension = True
-                if debug:
-                    print('Speeddial URL: ', sd_url)
+
+                param = feat.find("{http://www.w3.org/ns/widgets}param")
+
+                if param is not None and "value" in param.attrib:
+                    sd_url = param.attrib["value"]
+                    is_speeddial_extension = True
+
+                    if debug:
+                        print('Speeddial URL: ', sd_url)
+                else:
+                    self.warnings.append(
+                            "Invalid speed dial extension. "
+                            "feature element lacks param element or URL.")
+
         if len(featurenames):
             has_features = True
+
         if debug:
             print(("Feature names: ", featurenames))
+
         # Store preference data and add them to the index doc using a script
         prefstore = {}
         prefnodes = root.findall("{http://www.w3.org/ns/widgets}preference")
