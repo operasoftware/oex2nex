@@ -30,7 +30,7 @@ optional arguments:
                      oex_shim directory.
 ```
 
-For example, to convert an Opera `oex` extension dino-comics.oex into a `nex` compatible with Opera 14, but output the exension's contents as a directory (useful for tweaking things):
+For example, to convert an Opera `oex` extension dino-comics.oex into a `nex` compatible with Opera 15, but output the exension's contents as a directory (useful for tweaking things):
 
 ```
 $ python oex2nex/convertor.py -xd path/to/dino-comics.oex path/to/put/dino-comics
