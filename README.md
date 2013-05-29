@@ -8,7 +8,7 @@ oex2nex parses the `config.xml` file of an `oex` extension and creates a `manife
 
 ## Usage
 
-You can run oex2nex as a simple command-line utility, or install it as a package. In order to test out your converted extension, you'll need to load the unzipped result (or convert it to an unzipped directory with the `-d` option) with the Load Unpacked Extension feature in the [Extensions Manager](opera://extensions).
+You can run oex2nex as a simple command-line utility, or install it as a package. In order to test out your converted extension, you'll need to load the unzipped result (or convert it to an unzipped directory with the `-d` option) with the Load Unpacked Extension feature in the Extensions Manager (opera://extensions).
 
 ![Picture of Opera Extensions Manager Load Unpacked Extension button](http://i.imgur.com/oJyz82C.png)
 
