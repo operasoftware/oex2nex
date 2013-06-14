@@ -46,9 +46,9 @@ shim_fs_path = os.path.dirname(__file__)
 #"http://addons.opera.com/tools/oex_shim/"
 shim_fetch_from = (u"https://cgit.oslo.osa/"
         "cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/")
-oex_bg_shim = u"%s/operaextensions_background.js" % shim_dirname
-oex_anypage_shim = u"%s/operaextensions_popup.js" % shim_dirname
-oex_injscr_shim = u"%s/operaextensions_injectedscript.js" % shim_dirname
+oex_bg_shim = u"%s/operaextensions_background.min.js" % shim_dirname
+oex_anypage_shim = u"%s/operaextensions_popup.min.js" % shim_dirname
+oex_injscr_shim = u"%s/operaextensions_injectedscript.min.js" % shim_dirname
 oex_resource_loader = u"%s/popup_resourceloader" % shim_dirname
 # TODO: add a smart way of adding these following default permissions
 permissions = [u"http://*/*", u"https://*/*", u"storage"]
@@ -670,8 +670,8 @@ class Oex2Nex:
             try:
                 for key in rdict:
                     if 'text' in rdict[key] and 'textnew' in rdict[key]:
-						# NOTE: replaces throughout the script text; so be
-						# specific in what we feed this
+            # NOTE: replaces throughout the script text; so be
+            # specific in what we feed this
                         scriptdata = scriptdata.replace(rdict[key]['text'],
                                 rdict[key]['textnew'])
             except Exception as e:
@@ -938,9 +938,9 @@ def fetch_shims():
     import urllib2
     attempts = 0
     shims = iter((
-            "operaextensions_background.js",
-            "operaextensions_popup.js",
-            "operaextensions_injectedscript.js",
+            "operaextensions_background.min.js",
+            "operaextensions_popup.min.js",
+            "operaextensions_injectedscript.min.js",
     ))
     shim_dir = os.path.join(shim_fs_path, shim_dirname)
     shim = next(shims)
