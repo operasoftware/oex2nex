@@ -28,10 +28,10 @@ class TestNEX(unittest.TestCase):
         nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test.nex", "r")
         # we expect these files to get copied over
         expected = ["manifest.json", "hello.png", "popup.html", "index.html",
-                    "oex_shim/operaextensions_popup.js",
+                    "oex_shim/operaextensions_popup.min.js",
                     "oex_shim/popup_resourceloader.html",
                     "oex_shim/popup_resourceloader.js",
-                    "oex_shim/operaextensions_background.js",
+                    "oex_shim/operaextensions_background.min.js",
                     "inline_script_index_1.js"]
         for file in expected:
             self.assertIn(file, nex.namelist())
@@ -42,10 +42,10 @@ class TestNEX(unittest.TestCase):
         nex = zipfile.ZipFile("tests/fixtures/converted/manifest-test-dir.nex", "r")
         # we expect these files to get copied over
         expected = ["manifest.json", "hello.png", "popup.html", "index.html",
-                    "oex_shim/operaextensions_popup.js",
+                    "oex_shim/operaextensions_popup.min.js",
                     "oex_shim/popup_resourceloader.html",
                     "oex_shim/popup_resourceloader.js",
-                    "oex_shim/operaextensions_background.js",
+                    "oex_shim/operaextensions_background.min.js",
                     "inline_script_index_1.js"]
         for file in expected:
             self.assertIn(file, nex.namelist())
