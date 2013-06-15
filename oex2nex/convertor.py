@@ -48,7 +48,7 @@ shim_fetch_from = (u"https://cgit.oslo.osa/"
         "cgi-bin/cgit.cgi/desktop/extensions/oex_shim/plain/build/")
 oex_bg_shim = u"%s/operaextensions_background.min.js" % shim_dirname
 oex_anypage_shim = u"%s/operaextensions_popup.min.js" % shim_dirname
-oex_injscr_shim = u"%s/operaextensions_injectedscript.min.js" % shim_dirname
+oex_injscr_shim = u"%s/000.operaextensions_injectedscript.min.js" % "includes"
 oex_resource_loader = u"%s/popup_resourceloader" % shim_dirname
 # TODO: add a smart way of adding these following default permissions
 permissions = [u"http://*/*", u"https://*/*", u"storage"]
@@ -481,30 +481,29 @@ class Oex2Nex:
             if filename not in ["config.xml", indexdoc, popupdoc, optionsdoc]:
                 resources += ('"' + filename + '",')
 
-            if (filename != "config.xml"):
-                # Copy files from locales/en/ to root of the .nex package
-                do_copy = False
-                noloc_filename = None
-                if filename.startswith("locales/en"):
-                    noloc_filename = re.sub(r'^locales/en[a-zA-Z-]{0,2}/', '',
-                            filename, count=1)
-                    if (noloc_filename != filename
-                            and not (noloc_filename in zf_members)):
-                        do_copy = True
+            # Copy files from locales/en/ to root of the .nex package
+            do_copy = False
+            noloc_filename = None
+            if filename.startswith("locales/en"):
+                noloc_filename = re.sub(r'^locales/en[a-zA-Z-]{0,2}/', '',
+                        filename, count=1)
+                if (noloc_filename != filename
+                        and not (noloc_filename in zf_members)):
+                    do_copy = True
 
+            if noloc_filename and do_copy:
+                if debug:
+                    print("Copying a localised file : "
+                          "%s to the root of package as : %s" % (
+                                filename, noloc_filename))
+            try:
+                nex.writestr(filename, file_data)
                 if noloc_filename and do_copy:
-                    if debug:
-                        print("Copying a localised file : "
-                              "%s to the root of package as : %s" % (
-                                    filename, noloc_filename))
-                try:
-                    nex.writestr(filename, file_data)
-                    if noloc_filename and do_copy:
-                        nex.writestr(noloc_filename, file_data)
-                except UnicodeEncodeError:
-                    nex.writestr(filename, file_data.encode("utf-8"))
-                    if noloc_filename and do_copy:
-                        nex.writestr(noloc_filename, file_data.encode("utf-8"))
+                    nex.writestr(noloc_filename, file_data)
+            except UnicodeEncodeError:
+                nex.writestr(filename, file_data.encode("utf-8"))
+                if noloc_filename and do_copy:
+                    nex.writestr(noloc_filename, file_data.encode("utf-8"))
 
         if has_injscrs:
             if debug:
