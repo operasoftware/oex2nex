@@ -1,6 +1,6 @@
-!(function( global ) {
+!((global => {
   
-  var Opera = function() {};
+  var Opera = () => {};
 
   Opera.prototype.REVISION = '1';
 
@@ -12,7 +12,7 @@
     return this.REVISION;
   };
 
-  Opera.prototype.postError = function( str ) {
+  Opera.prototype.postError = str => {
     console.log( str );
   };
 
@@ -34,7 +34,7 @@
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
-      target[methodName].apply(target, args);
+      target[methodName](...args);
     } else {
       _delayedExecuteEvents.push({
         "target": target,
@@ -75,20 +75,21 @@ var delayedExecuteEvents = [
 
  if (typeof process !== 'undefined' &&
    {}.toString.call(process) === '[object process]') {
-   async = function(callback, binding) {
-     process.nextTick(function() {
+   async = (callback, binding) => {
+     process.nextTick(() => {
        callback.call(binding);
      });
    };
  } else if (MutationObserver) {
    var queue = [];
 
-   var observer = new MutationObserver(function() {
+   var observer = new MutationObserver(() => {
      var toProcess = queue.slice();
      queue = [];
 
-     toProcess.forEach(function(tuple) {
-       var callback = tuple[0], binding = tuple[1];
+     toProcess.forEach(tuple => {
+       var callback = tuple[0];
+       var binding = tuple[1];
        callback.call(binding);
      });
    });
@@ -96,13 +97,13 @@ var delayedExecuteEvents = [
    var element = document.createElement('div');
    observer.observe(element, { attributes: true });
 
-   async = function(callback, binding) {
+   async = (callback, binding) => {
      queue.push([callback, binding]);
      element.setAttribute('drainQueue', 'drainQueue');
    };
  } else {
-   async = function(callback, binding) {
-     setTimeout(function() {
+   async = (callback, binding) => {
+     setTimeout(() => {
        callback.call(binding);
      }, 1);
    };
@@ -120,7 +121,7 @@ var delayedExecuteEvents = [
    }
  };
 
- var indexOf = function(callbacks, callback) {
+ var indexOf = (callbacks, callback) => {
    for (var i=0, l=callbacks.length; i<l; i++) {
      if (callbacks[i][0] === callback) { return i; }
    }
@@ -128,7 +129,7 @@ var delayedExecuteEvents = [
    return -1;
  };
 
- var callbacksFor = function(object) {
+ var callbacksFor = object => {
    var callbacks = object._promiseCallbacks;
 
    if (!callbacks) {
@@ -139,15 +140,17 @@ var delayedExecuteEvents = [
  };
 
  var EventTarget = exports.EventTarget = {
-   mixin: function(object) {
+   mixin(object) {
      object.on = this.on;
      object.off = this.off;
      object.trigger = this.trigger;
      return object;
    },
 
-   on: function(eventNames, callback, binding) {
-     var allCallbacks = callbacksFor(this), callbacks, eventName;
+   on(eventNames, callback, binding) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var eventName;
      eventNames = eventNames.split(/\s+/);
      binding = binding || this;
 
@@ -164,8 +167,11 @@ var delayedExecuteEvents = [
      }
    },
 
-   off: function(eventNames, callback) {
-     var allCallbacks = callbacksFor(this), callbacks, eventName, index;
+   off(eventNames, callback) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var eventName;
+     var index;
      eventNames = eventNames.split(/\s+/);
 
      while (eventName = eventNames.shift()) {
@@ -182,9 +188,13 @@ var delayedExecuteEvents = [
      }
    },
 
-   trigger: function(eventName, options) {
-     var allCallbacks = callbacksFor(this),
-         callbacks, callbackTuple, callback, binding, event;
+   trigger(eventName, options) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var callbackTuple;
+     var callback;
+     var binding;
+     var event;
 
      if (callbacks = allCallbacks[eventName]) {
        for (var i=0, l=callbacks.length; i<l; i++) {
@@ -213,10 +223,11 @@ var delayedExecuteEvents = [
    }, this);
  };
 
- var noop = function() {};
+ var noop = () => {};
 
- var invokeCallback = function(type, promise, callback, event) {
-   var value, error;
+ var invokeCallback = (type, promise, callback, event) => {
+   var value;
+   var error;
 
    if (callback) {
      try {
@@ -229,9 +240,9 @@ var delayedExecuteEvents = [
    }
 
    if (value instanceof Promise) {
-     value.then(function(value) {
+     value.then(value => {
        promise.resolve(value);
-     }, function(error) {
+     }, error => {
        promise.reject(error);
      });
    } else if (callback && value) {
@@ -244,21 +255,21 @@ var delayedExecuteEvents = [
  };
 
  Promise.prototype = {
-   then: function(done, fail) {
+   then(done, fail) {
      var thenPromise = new Promise();
 
-     this.on('promise:resolved', function(event) {
+     this.on('promise:resolved', event => {
        invokeCallback('resolve', thenPromise, done, event);
      });
 
-     this.on('promise:failed', function(event) {
+     this.on('promise:failed', event => {
        invokeCallback('reject', thenPromise, fail, event);
      });
 
      return thenPromise;
    },
 
-   resolve: function(value) {
+   resolve(value) {
      exports.async(function() {
        this.trigger('promise:resolved', { detail: value });
        this.isResolved = value;
@@ -268,7 +279,7 @@ var delayedExecuteEvents = [
      this.reject = noop;
    },
 
-   reject: function(value) {
+   reject(value) {
      exports.async(function() {
        this.trigger('promise:failed', { detail: value });
        this.isRejected = value;
@@ -403,10 +414,10 @@ function complexColorToHex(color, backgroundColorVal) {
   };
 
   var toRGB = {
-    rgb: function( bits ) {
+    rgb(bits) {
       return [ bits[1], bits[2], bits[3], bits[4] || 1 ];
     },
-    hsl: function( bits ) {
+    hsl(bits) {
       var hsl = {
         h : parseInt( bits[ 1 ], 10 ) % 360 / 360,
         s : parseInt( bits[ 2 ], 10 ) % 101 / 100,
@@ -428,18 +439,20 @@ function complexColorToHex(color, backgroundColorVal) {
         hsl.a
       ];
     },
-    hsv: function( bits ) {
-      var rgb = {},
-          hsv = {
-            h : parseInt( bits[ 1 ], 10 ) % 360 / 360,
-            s : parseInt( bits[ 2 ], 10 ) % 101 / 100,
-            v : parseInt( bits[ 3 ], 10 ) % 101 / 100
-          },
-          i = Math.floor( hsv.h * 6 ),
-          f = hsv.h * 6 - i,
-          p = hsv.v * ( 1 - hsv.s ),
-          q = hsv.v * ( 1 - f * hsv.s ),
-          t = hsv.v * ( 1 - ( 1 - f ) * hsv.s );
+    hsv(bits) {
+      var rgb = {};
+
+      var hsv = {
+        h : parseInt( bits[ 1 ], 10 ) % 360 / 360,
+        s : parseInt( bits[ 2 ], 10 ) % 101 / 100,
+        v : parseInt( bits[ 3 ], 10 ) % 101 / 100
+      };
+
+      var i = Math.floor( hsv.h * 6 );
+      var f = hsv.h * 6 - i;
+      var p = hsv.v * ( 1 - hsv.s );
+      var q = hsv.v * ( 1 - f * hsv.s );
+      var t = hsv.v * ( 1 - ( 1 - f ) * hsv.s );
 
       switch( i % 6 ) {
         case 0:
@@ -509,7 +522,7 @@ function OError(name, msg, code) {
 
 OError.prototype.__proto__ = Error.prototype;
 
-var OEvent = function(eventType, eventProperties) {
+var OEvent = (eventType, eventProperties) => {
   
   var props = eventProperties || {};
   
@@ -569,8 +582,10 @@ for(var i in OEventTarget.prototype) {
  * Queue for running multi-object promise-rooted asynchronous
  * functions serially
  */
-var Queue = (function() {
-  var _q = [], _lock = false, _timeout = 1000;
+var Queue = ((() => {
+  var _q = [];
+  var _lock = false;
+  var _timeout = 1000;
 
   function callNext() {
     _lock = false;
@@ -597,7 +612,7 @@ var Queue = (function() {
         item.fn.call(item.obj, callNext);
       } else {
         // break deadlocks
-        var timer = global.setTimeout(function() {
+        var timer = global.setTimeout(() => {
           console.warn('PromiseQueue deadlock broken with timeout.');
           console.log(item.obj);
           console.log(item.obj.isResolved);
@@ -605,7 +620,7 @@ var Queue = (function() {
         }, _timeout);
 
         // execute queue item when obj resolves
-        item.obj.on('promise:resolved', function() {
+        item.obj.on('promise:resolved', () => {
           if(timer) global.clearTimeout(timer);
 
           item.obj.isResolved = true; // set too late in rsvp.js
@@ -614,18 +629,18 @@ var Queue = (function() {
         });
       }
     }
-  };
+  }
 
   return {
-    enqueue: function(obj, fn, ignoreResolve) {
+    enqueue(obj, fn, ignoreResolve) {
       _q.push({ "obj": obj, "fn": fn, "ignoreResolve": ignoreResolve });
       dequeue(); // auto-execute next queue item
     },
-    dequeue: function() {
+    dequeue() {
       dequeue();
     }
-  }
-})();
+  };
+}))();
 
 var OMessagePort = function( isBackground ) {
 
@@ -640,15 +655,15 @@ var OMessagePort = function( isBackground ) {
 
     this._localPort = chrome.extension.connect({ "name": ("" + Math.floor( Math.random() * 1e16)) });
 
-    this._localPort.onDisconnect.addListener(function() {
+    this._localPort.onDisconnect.addListener(() => {
 
       this.dispatchEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
 
       this._localPort = null;
 
-    }.bind(this));
+    });
 
-    var onMessageHandler = function( _message, _sender, responseCallback ) {
+    var onMessageHandler = (_message, _sender, responseCallback) => {
 
       var localPort = this._localPort;
 
@@ -660,7 +675,7 @@ var OMessagePort = function( isBackground ) {
           {
             "data": _message,
             "source": {
-              postMessage: function( data ) {
+              postMessage(data) {
                 localPort.postMessage( data );
               },
               "tabId": _sender && _sender.tab ? _sender.tab.id : null
@@ -678,7 +693,7 @@ var OMessagePort = function( isBackground ) {
           {
             "data": _message,
             "source": {
-              postMessage: function( data ) {
+              postMessage(data) {
                 localPort.postMessage( data );
               },
               "tabId": _sender && _sender.tab ? _sender.tab.id : null
@@ -690,7 +705,7 @@ var OMessagePort = function( isBackground ) {
 
       if(responseCallback)responseCallback({});
 
-    }.bind(this);
+    };
 
     this._localPort.onMessage.addListener( onMessageHandler );
     chrome.extension.onMessage.addListener( onMessageHandler );
@@ -730,9 +745,7 @@ var OperaExtension = function() {
 
 OperaExtension.prototype = Object.create( OMessagePort.prototype );
 
-OperaExtension.prototype.__defineGetter__('bgProcess', function() {
-  return chrome.extension.getBackgroundPage();
-});
+OperaExtension.prototype.__defineGetter__('bgProcess', () => chrome.extension.getBackgroundPage());
 
 // Generate API stubs
 
@@ -740,7 +753,7 @@ var OEX = opera.extension = opera.extension || new OperaExtension();
 
 var OEC = opera.contexts = opera.contexts || {};
 
-OperaExtension.prototype.getFile = function(path) {
+OperaExtension.prototype.getFile = path => {
   var response = null;
 
   if(typeof path != "string")return response;
@@ -755,16 +768,14 @@ OperaExtension.prototype.getFile = function(path) {
 
     var xhr = new XMLHttpRequest();
 
-    xhr.onloadend = function(){
+    xhr.onloadend = () => {
         if (xhr.readyState==xhr.DONE && xhr.status==200){
           result = xhr.response;
 
           result.name = path.substring(path.lastIndexOf('/')+1);
 
           result.lastModifiedDate = null;
-          result.toString = function(){
-            return "[object File]";
-          };
+          result.toString = () => "[object File]";
           response = result;
         };
     };
@@ -827,21 +838,20 @@ if (global.opera) {
   isReady = true;
 
   // Make scripts also work in Opera <= version 12
-  opera.isReady = function(fn) {
+  opera.isReady = fn => {
     fn.call(opera);
 
     // Run delayed events (if any)
     for(var i = 0, l = _delayedExecuteEvents.length; i < l; i++) {
       var o = _delayedExecuteEvents[i];
-      o.target[o.methodName].apply(o.target, o.args);
+      o.target[o.methodName](...o.args);
     }
     _delayedExecuteEvents = [];
   };
 
 } else {
 
-  opera.isReady = (function() {
-
+  opera.isReady = ((() => {
     var fns = {
           "isready": [],
           "readystatechange": [],
@@ -849,9 +859,9 @@ if (global.opera) {
           "load": []
         };
 
-    var hasFired_DOMContentLoaded = false,
-        hasFired_Load = false;
-    
+    var hasFired_DOMContentLoaded = false;
+    var hasFired_Load = false;
+
     // If we already missed DOMContentLoaded or Load events firing, record that now...
     if(global.document.readyState === "interactive") {
       hasFired_DOMContentLoaded = true;
@@ -870,9 +880,9 @@ if (global.opera) {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
-    
+
     // Catch and fire readystatechange events when they happen
-    global.document.addEventListener("readystatechange", function(event) {
+    global.document.addEventListener("readystatechange", event => {
       event.stopImmediatePropagation();
       event.stopPropagation();
       if( global.document.readyState !== 'interactive' && global.document.readyState !== 'complete' ) {
@@ -881,18 +891,18 @@ if (global.opera) {
         global.document.readyState = 'loading';
       }
     }, true);
-    
+
     // Take over handling of document.readyState via our own load bootstrap code below
     var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
-    global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
-    global.document.__defineGetter__('readyState', function() { return _readyState; });
+    global.document.__defineSetter__('readyState', val => { _readyState = val; });
+    global.document.__defineGetter__('readyState', () => _readyState);
 
     function interceptAddEventListener(target, _name) {
 
       var _target = target.addEventListener;
 
       // Replace addEventListener for given target
-      target.addEventListener = function(name, fn, usecapture) {
+      target.addEventListener = (name, fn, usecapture) => {
         name = name + ""; // force event name to type string
         
         if (name.toLowerCase() === _name.toLowerCase()) {
@@ -913,7 +923,7 @@ if (global.opera) {
       };
 
       // Replace target.on[_name] with custom setter function
-      target.__defineSetter__("on" + _name.toLowerCase(), function( fn ) {
+      target.__defineSetter__("on" + _name.toLowerCase(), fn => {
         // call code block just created above...
         target.addEventListener(_name.toLowerCase(), fn, false);
       });
@@ -951,7 +961,7 @@ if (global.opera) {
     }
 
     function ready() {
-      global.setTimeout(function() {
+      global.setTimeout(() => {
 
         if (isReady) {
           return;
@@ -1007,12 +1017,12 @@ if (global.opera) {
                 // Run delayed events (if any)
                 for(var i = 0, l = _delayedExecuteEvents.length; i < l; i++) {
                   var o = _delayedExecuteEvents[i];
-                  o.target[o.methodName].apply(o.target, o.args);
+                  o.target[o.methodName](...o.args);
                 }
                 _delayedExecuteEvents = [];
 
               } else {
-                global.setTimeout(function() {
+                global.setTimeout(() => {
                   fireLoad();
                 }, 50);
               }
@@ -1020,7 +1030,7 @@ if (global.opera) {
             })();
 
           } else {
-            global.setTimeout(function() {
+            global.setTimeout(() => {
               fireDOMContentLoaded();
             }, 50);
           }
@@ -1051,7 +1061,7 @@ if (global.opera) {
           // spin the loop until everything is working
           // or we receive a timeout override (handled
           // in next loop, above)
-          global.setTimeout(function() {
+          global.setTimeout(() => {
             holdReady();
           }, 20);
           return;
@@ -1063,7 +1073,7 @@ if (global.opera) {
 
     })();
 
-    return function(fn) {
+    return fn => {
       // if the Library is already ready,
       // execute the function immediately.
       // otherwise, queue it up until isReady
@@ -1072,13 +1082,13 @@ if (global.opera) {
       } else {
         fns['isready'].push(fn);
       }
-    }
-  })();
+    };
+  }))();
 
 }
 
 // Set the width and height of the popup window to values provided in the URL query string
-opera.isReady(function() {
+opera.isReady(() => {
 
   function getParam( key ) {
     key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
@@ -1088,8 +1098,9 @@ opera.isReady(function() {
     return results == null ? "" : window.decodeURIComponent(results[1].replace(/\+/g, " "));
   }
 
-  window.addEventListener('DOMContentLoaded', function() {
-    var w = getParam('w'), h = getParam('h');
+  window.addEventListener('DOMContentLoaded', () => {
+    var w = getParam('w');
+    var h = getParam('h');
     if(w !== "") {
       document.body.style.minWidth = w.replace(/\D/g,'') + "px";
     } else {
@@ -1104,11 +1115,11 @@ opera.isReady(function() {
 
 });
 
-opera.isReady(function() {
+opera.isReady(() => {
 
   // Rewrite in-line event handlers (eg. <input ... onclick=""> for a sub-set of common standard events)
 
-  document.addEventListener('DOMContentLoaded', function(e) {
+  document.addEventListener('DOMContentLoaded', e => {
   
     var selectors = ['load', 'beforeunload', 'unload', 'click', 'dblclick', 'mouseover', 'mousemove', 
                         'mousedown', 'mouseup', 'mouseout', 'keydown', 'keypress', 'keyup', 'blur', 'focus'];
@@ -1134,4 +1145,4 @@ opera.isReady(function() {
   // Make API available on the window DOM object
   global.opera = opera;
 
-})( window );
+}))( window );
