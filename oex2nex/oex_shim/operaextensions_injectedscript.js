@@ -1,6 +1,6 @@
-!(function( global ) {
+!((global => {
   
-  var Opera = function() {};
+  var Opera = () => {};
 
   Opera.prototype.REVISION = '1';
 
@@ -12,7 +12,7 @@
     return this.REVISION;
   };
 
-  Opera.prototype.postError = function( str ) {
+  Opera.prototype.postError = str => {
     console.log( str );
   };
 
@@ -34,7 +34,7 @@
 
   function addDelayedEvent(target, methodName, args) {
     if(isReady) {
-      target[methodName].apply(target, args);
+      target[methodName](...args);
     } else {
       _delayedExecuteEvents.push({
         "target": target,
@@ -77,20 +77,21 @@ var delayedExecuteEvents = [
 
  if (typeof process !== 'undefined' &&
    {}.toString.call(process) === '[object process]') {
-   async = function(callback, binding) {
-     process.nextTick(function() {
+   async = (callback, binding) => {
+     process.nextTick(() => {
        callback.call(binding);
      });
    };
  } else if (MutationObserver) {
    var queue = [];
 
-   var observer = new MutationObserver(function() {
+   var observer = new MutationObserver(() => {
      var toProcess = queue.slice();
      queue = [];
 
-     toProcess.forEach(function(tuple) {
-       var callback = tuple[0], binding = tuple[1];
+     toProcess.forEach(tuple => {
+       var callback = tuple[0];
+       var binding = tuple[1];
        callback.call(binding);
      });
    });
@@ -98,13 +99,13 @@ var delayedExecuteEvents = [
    var element = document.createElement('div');
    observer.observe(element, { attributes: true });
 
-   async = function(callback, binding) {
+   async = (callback, binding) => {
      queue.push([callback, binding]);
      element.setAttribute('drainQueue', 'drainQueue');
    };
  } else {
-   async = function(callback, binding) {
-     setTimeout(function() {
+   async = (callback, binding) => {
+     setTimeout(() => {
        callback.call(binding);
      }, 1);
    };
@@ -122,7 +123,7 @@ var delayedExecuteEvents = [
    }
  };
 
- var indexOf = function(callbacks, callback) {
+ var indexOf = (callbacks, callback) => {
    for (var i=0, l=callbacks.length; i<l; i++) {
      if (callbacks[i][0] === callback) { return i; }
    }
@@ -130,7 +131,7 @@ var delayedExecuteEvents = [
    return -1;
  };
 
- var callbacksFor = function(object) {
+ var callbacksFor = object => {
    var callbacks = object._promiseCallbacks;
 
    if (!callbacks) {
@@ -141,15 +142,17 @@ var delayedExecuteEvents = [
  };
 
  var EventTarget = exports.EventTarget = {
-   mixin: function(object) {
+   mixin(object) {
      object.on = this.on;
      object.off = this.off;
      object.trigger = this.trigger;
      return object;
    },
 
-   on: function(eventNames, callback, binding) {
-     var allCallbacks = callbacksFor(this), callbacks, eventName;
+   on(eventNames, callback, binding) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var eventName;
      eventNames = eventNames.split(/\s+/);
      binding = binding || this;
 
@@ -166,8 +169,11 @@ var delayedExecuteEvents = [
      }
    },
 
-   off: function(eventNames, callback) {
-     var allCallbacks = callbacksFor(this), callbacks, eventName, index;
+   off(eventNames, callback) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var eventName;
+     var index;
      eventNames = eventNames.split(/\s+/);
 
      while (eventName = eventNames.shift()) {
@@ -184,9 +190,13 @@ var delayedExecuteEvents = [
      }
    },
 
-   trigger: function(eventName, options) {
-     var allCallbacks = callbacksFor(this),
-         callbacks, callbackTuple, callback, binding, event;
+   trigger(eventName, options) {
+     var allCallbacks = callbacksFor(this);
+     var callbacks;
+     var callbackTuple;
+     var callback;
+     var binding;
+     var event;
 
      if (callbacks = allCallbacks[eventName]) {
        for (var i=0, l=callbacks.length; i<l; i++) {
@@ -215,10 +225,11 @@ var delayedExecuteEvents = [
    }, this);
  };
 
- var noop = function() {};
+ var noop = () => {};
 
- var invokeCallback = function(type, promise, callback, event) {
-   var value, error;
+ var invokeCallback = (type, promise, callback, event) => {
+   var value;
+   var error;
 
    if (callback) {
      try {
@@ -231,9 +242,9 @@ var delayedExecuteEvents = [
    }
 
    if (value instanceof Promise) {
-     value.then(function(value) {
+     value.then(value => {
        promise.resolve(value);
-     }, function(error) {
+     }, error => {
        promise.reject(error);
      });
    } else if (callback && value) {
@@ -246,21 +257,21 @@ var delayedExecuteEvents = [
  };
 
  Promise.prototype = {
-   then: function(done, fail) {
+   then(done, fail) {
      var thenPromise = new Promise();
 
-     this.on('promise:resolved', function(event) {
+     this.on('promise:resolved', event => {
        invokeCallback('resolve', thenPromise, done, event);
      });
 
-     this.on('promise:failed', function(event) {
+     this.on('promise:failed', event => {
        invokeCallback('reject', thenPromise, fail, event);
      });
 
      return thenPromise;
    },
 
-   resolve: function(value) {
+   resolve(value) {
      exports.async(function() {
        this.trigger('promise:resolved', { detail: value });
        this.isResolved = value;
@@ -270,7 +281,7 @@ var delayedExecuteEvents = [
      this.reject = noop;
    },
 
-   reject: function(value) {
+   reject(value) {
      exports.async(function() {
        this.trigger('promise:failed', { detail: value });
        this.isRejected = value;
@@ -293,7 +304,7 @@ function OError(name, msg, code) {
 
 OError.prototype.__proto__ = Error.prototype;
 
-var OEvent = function(eventType, eventProperties) {
+var OEvent = (eventType, eventProperties) => {
   
   var props = eventProperties || {};
   
@@ -349,15 +360,15 @@ var OMessagePort = function( isBackground ) {
 
     this._localPort = chrome.extension.connect({ "name": ("" + Math.floor( Math.random() * 1e16)) });
 
-    this._localPort.onDisconnect.addListener(function() {
+    this._localPort.onDisconnect.addListener(() => {
 
       this.dispatchEvent( new OEvent( 'disconnect', { "source": this._localPort } ) );
 
       this._localPort = null;
 
-    }.bind(this));
+    });
 
-    var onMessageHandler = function( _message, _sender, responseCallback ) {
+    var onMessageHandler = (_message, _sender, responseCallback) => {
 
       var localPort = this._localPort;
 
@@ -369,7 +380,7 @@ var OMessagePort = function( isBackground ) {
           {
             "data": _message,
             "source": {
-              postMessage: function( data ) {
+              postMessage(data) {
                 localPort.postMessage( data );
               },
               "tabId": _sender && _sender.tab ? _sender.tab.id : null
@@ -387,7 +398,7 @@ var OMessagePort = function( isBackground ) {
           {
             "data": _message,
             "source": {
-              postMessage: function( data ) {
+              postMessage(data) {
                 localPort.postMessage( data );
               },
               "tabId": _sender && _sender.tab ? _sender.tab.id : null
@@ -399,7 +410,7 @@ var OMessagePort = function( isBackground ) {
 
       if(responseCallback)responseCallback({});
 
-    }.bind(this);
+    };
 
     this._localPort.onMessage.addListener( onMessageHandler );
     chrome.extension.onMessage.addListener( onMessageHandler );
@@ -439,14 +450,12 @@ var OperaExtension = function() {
 
 OperaExtension.prototype = Object.create( OMessagePort.prototype );
 
-OperaExtension.prototype.__defineGetter__('bgProcess', function() {
-  return chrome.extension.getBackgroundPage();
-});
+OperaExtension.prototype.__defineGetter__('bgProcess', () => chrome.extension.getBackgroundPage());
 
 // Add Screenshot API to Injected Script processes only
 OperaExtension.prototype.getScreenshot = function( callback ) {
 
-  var screenshotCallback = function( msg ) {
+  var screenshotCallback = msg => {
 
     if( !msg.data || !msg.data.action || msg.data.action !== '___O_getScreenshot_RESPONSE' || !msg.data.dataUrl ) {
       return;
@@ -472,7 +481,7 @@ OperaExtension.prototype.getScreenshot = function( callback ) {
     // Tear down this event listener
     OEX.removeEventListener('controlmessage', screenshotCallback);
 
-  }.bind(this);
+  };
 
   // Set up this event listener
   OEX.addEventListener('controlmessage', screenshotCallback);
@@ -490,7 +499,7 @@ var OEX = opera.extension = opera.extension || new OperaExtension();
 
 var OEC = opera.contexts = opera.contexts || {};
 
-OperaExtension.prototype.getFile = function(path) {
+OperaExtension.prototype.getFile = path => {
   var response = null;
 
   if(typeof path != "string")return response;
@@ -505,16 +514,14 @@ OperaExtension.prototype.getFile = function(path) {
 
     var xhr = new XMLHttpRequest();
 
-    xhr.onloadend = function(){
+    xhr.onloadend = () => {
         if (xhr.readyState==xhr.DONE && xhr.status==200){
           result = xhr.response;
 
           result.name = path.substring(path.lastIndexOf('/')+1);
 
           result.lastModifiedDate = null;
-          result.toString = function(){
-            return "[object File]";
-          };
+          result.toString = () => "[object File]";
           response = result;
         };
     };
@@ -539,14 +546,14 @@ var OStorageProxy = function () {
   Object.defineProperty(this, "length", { value : 0, writable:true });
 
   Object.defineProperty(OStorageProxy.prototype, "getItem", {
-    value: function( key ) {
+    value(key) {
       var val = this[key];
       return val === undefined ? null : val;
     }
   });
 
   Object.defineProperty(OStorageProxy.prototype, "key", {
-    value: function( i ) {
+    value(i) {
       var size = 0;
       for (var i in this) {
         if( this.hasOwnProperty( i ) ) {
@@ -559,7 +566,7 @@ var OStorageProxy = function () {
   });
 
   Object.defineProperty(OStorageProxy.prototype, "removeItem", {
-    value: function( key, proxiedChange ) {
+    value(key, proxiedChange) {
       if( this.hasOwnProperty( key ) ) {
         delete this[key];
         this.length--;
@@ -578,7 +585,7 @@ var OStorageProxy = function () {
   });
 
   Object.defineProperty(OStorageProxy.prototype, "setItem", {
-    value: function( key, value, proxiedChange ) {
+    value(key, value, proxiedChange) {
       if( !this[key] ) {
         this.length++;
       }
@@ -598,7 +605,7 @@ var OStorageProxy = function () {
   });
 
   Object.defineProperty(OStorageProxy.prototype, "clear", {
-    value: function( proxiedChange ) {
+    value(proxiedChange) {
       for(var i in this) {
         if( this.hasOwnProperty( i ) ) {
           delete this[ i ];
@@ -630,7 +637,7 @@ var OWidgetObjProxy = function() {
   this._preferences = new OStorageProxy();
   this._preferencesSet = {};
 
-  OEX.addEventListener('controlmessage', function( msg ) {
+  OEX.addEventListener('controlmessage', msg => {
 
     if( !msg.data || !msg.data.action ) {
       return;
@@ -688,7 +695,7 @@ var OWidgetObjProxy = function() {
         break;
     }
 
-  }.bind(this), false);
+  }, false);
 
   // Setup widget API via proxy
   OEX.postMessage({
@@ -699,7 +706,7 @@ var OWidgetObjProxy = function() {
   // added with preference.blah or preferences['blah']
   // (instead of the catachable .setItem) and push these
   // preferences to the background script
-  global.addEventListener('beforeunload', function() {
+  global.addEventListener('beforeunload', () => {
     // TODO implement widget.preferences page unload behavior
   }, false);
 
@@ -753,7 +760,7 @@ global.widget = global.widget || new OWidgetObjProxy();
 
 EventTarget.mixin( Opera.prototype );
 
-Opera.prototype.defineMagicVariable = function(name, getter, setter) {
+Opera.prototype.defineMagicVariable = (name, getter, setter) => {
   if( getter === undefined || setter === undefined ){
     return;
   }
@@ -779,7 +786,7 @@ Opera.prototype.defineMagicVariable = function(name, getter, setter) {
 
 };
 
-Opera.prototype.defineMagicFunction = function(name, implementation) {
+Opera.prototype.defineMagicFunction = (name, implementation) => {
 
   if(!implementation || Object.prototype.toString.call(implementation) !== "[object Function]") {
     return;
@@ -797,10 +804,11 @@ Opera.prototype.defineMagicFunction = function(name, implementation) {
 
 Opera.prototype.addEventListener = function(name, fn, useCapture) {
   this.on(name, fn);
-  var evtData=name.split(/\./), op=this;
+  var evtData=name.split(/\./);
+  var op=this;
   if(/beforeevent(listener|)/i.test(evtData[0]) && evtData[1]){ // BeforeEvent.event, BeforeEventListener.event. Note: no support for 'BeforeEvent' only
-    document.addEventListener(evtData[1], function(e){
-      fn.call( op, {type:name, event:e, preventDefault:function(){e.stopPropagation();}} ); // Note:  no support for .listener. 
+    document.addEventListener(evtData[1], e => {
+      fn.call( op, {type:name, event:e, preventDefault() {e.stopPropagation();}} ); // Note:  no support for .listener. 
       // Note: we could use op.trigger( name, {event:e} ); but the RSVP framework doesn't support event.preventDefault()
     }, true);
     return;
@@ -808,31 +816,28 @@ Opera.prototype.addEventListener = function(name, fn, useCapture) {
   console.log( 'Warning: no support for '+name+' events' );
 };
 
-Opera.prototype.removeEventListener = function(name, fn, useCapture) {
+Opera.prototype.removeEventListener = (name, fn, useCapture) => {
   // TODO Implement http://www.opera.com/docs/userjs/specs/#evlistener
   // ... this.off(name, function)
 };
 
 // Same backend implementation as widget.preferences
-Opera.prototype.__defineGetter__('scriptStorage', function() {
-  return widget.preferences;
-});
+Opera.prototype.__defineGetter__('scriptStorage', () => widget.preferences);
 
-Opera.prototype.setOverrideHistoryNavigationMode = function(mode) {
+Opera.prototype.setOverrideHistoryNavigationMode = mode => {
   // NOT IMPLEMENTED
 };
 
-Opera.prototype.__defineGetter__('getOverrideHistoryNavigationMode', function() {
-  return "automatic"; // default
-});
-var MenuEvent = (function(){
+Opera.prototype.__defineGetter__('getOverrideHistoryNavigationMode', () => // default
+"automatic");
+var MenuEvent = ((() => {
   var lastSrcElement = null;
 
-  document.addEventListener('contextmenu',function(e){
+  document.addEventListener('contextmenu',e => {
     lastSrcElement = e.srcElement;
   },false);
 
-  return function(type,args,target){
+  return (type, args, target) => {
 
     var event = OEvent(type,{
 
@@ -846,13 +851,13 @@ var MenuEvent = (function(){
       srcURL: args.info.srcUrl || null
     });
 
-    Object.defineProperty(event,'target',{enumerable: true,  configurable: false,  get: function(){return target || null;}, set: function(value){}});
-    Object.defineProperty(event,'srcElement',{enumerable: true,  configurable: false,  get: function(srcElement){ return function(){return srcElement || null;} }(lastSrcElement), set: function(value){}});
+    Object.defineProperty(event,'target',{enumerable: true,  configurable: false,  get() {return target || null;}, set(value) {}});
+    Object.defineProperty(event,'srcElement',{enumerable: true,  configurable: false,  get: (srcElement => () => srcElement || null)(lastSrcElement), set(value) {}});
 
     return event;
   };
 
-})();
+}))();
 
 MenuEvent.prototype = Object.create( Event.prototype );
 var MenuEventTarget = function(){
@@ -863,10 +868,10 @@ var MenuEventTarget = function(){
 
 	var onclick = null;
 
-	Object.defineProperty(this,'onclick',{enumerable: true,  configurable: false,  get: function(){
+	Object.defineProperty(this,'onclick',{enumerable: true,  configurable: false,  get() {
 				return onclick;
 			},
-			set: function(value){
+			set(value) {
 				if(onclick!=null)this.removeEventListener('click',onclick,false);
 
 				onclick = value;
@@ -876,28 +881,30 @@ var MenuEventTarget = function(){
 			}
 	});
 
-	Object.defineProperty(this,'dispatchEvent',{enumerable: false,  configurable: false, writable: false, value: function(event){
-		var currentTarget = this;
-		var stoppedImmediatePropagation = false;
-		Object.defineProperty(event,'currentTarget',{enumerable: true,  configurable: false,  get: function(){return currentTarget;}, set: function(value){}});
-		Object.defineProperty(event,'stopImmediatePropagation',{enumerable: true,  configurable: false, writable: false, value: function(){ stoppedImmediatePropagation = true;}});
+	Object.defineProperty(this,'dispatchEvent',{enumerable: false,  configurable: false, writable: false, value(event) {
+      var currentTarget = this;
+      var stoppedImmediatePropagation = false;
+      Object.defineProperty(event,'currentTarget',{enumerable: true,  configurable: false,  get() {return currentTarget;}, set(value) {}});
+      Object.defineProperty(event,'stopImmediatePropagation',{enumerable: true,  configurable: false, writable: false, value() { stoppedImmediatePropagation = true;}});
 
-		var allCallbacks = callbacksFor(target),
-		callbacks = allCallbacks[event.type], callbackTuple, callback, binding;
+      var allCallbacks = callbacksFor(target);
+      var callbacks = allCallbacks[event.type];
+      var callbackTuple;
+      var callback;
+      var binding;
 
 
-		if (callbacks)for (var i=0, l=callbacks.length; i<l; i++) {
-			callbackTuple = callbacks[i];
-			callback = callbackTuple[0];
-			binding = callbackTuple[1];
-			if(!stoppedImmediatePropagation)callback.call(binding, event);
-		};
-
-	}});
-	Object.defineProperty(this,'addEventListener',{enumerable: true,  configurable: false, writable: false, value: function(eventName, callback, useCapture) {
+      if (callbacks)for (var i=0, l=callbacks.length; i<l; i++) {
+          callbackTuple = callbacks[i];
+          callback = callbackTuple[0];
+          binding = callbackTuple[1];
+          if(!stoppedImmediatePropagation)callback.call(binding, event);
+      }
+    }});
+	Object.defineProperty(this,'addEventListener',{enumerable: true,  configurable: false, writable: false, value(eventName, callback, useCapture) {
 		target.on(eventName, callback,this); // no useCapture
 	}});
-	Object.defineProperty(this,'removeEventListener',{enumerable: true,  configurable: false, writable: false, value: function(eventName, callback, useCapture) {
+	Object.defineProperty(this,'removeEventListener',{enumerable: true,  configurable: false, writable: false, value(eventName, callback, useCapture) {
 		target.off(eventName, callback,this); // no useCapture
 	}});
 
@@ -907,11 +914,11 @@ var MenuItemProxy = function(id) {
 
   MenuEventTarget.call( this );
 
-  Object.defineProperty(this,'toString',{enumerable: false,  configurable: false, writable: false, value: function(event){
+  Object.defineProperty(this,'toString',{enumerable: false,  configurable: false, writable: false, value(event) {
 		return "[object MenuItemProxy]";
 	}});
 
-  Object.defineProperty(this,'id',{enumerable: true,  configurable: false,  get: function(){return id;}, set: function(){}});
+  Object.defineProperty(this,'id',{enumerable: true,  configurable: false,  get() {return id;}, set() {}});
 
 };
 
@@ -921,12 +928,12 @@ var MenuContextProxy = function() {
 
   MenuEventTarget.call( this );
 
-  Object.defineProperty(this,'toString',{enumerable: false,  configurable: false, writable: false, value: function(event){
+  Object.defineProperty(this,'toString',{enumerable: false,  configurable: false, writable: false, value(event) {
 		return "[object MenuContextProxy]";
 	}});
 
 
-	OEX.addEventListener('controlmessage', function(e) {
+	OEX.addEventListener('controlmessage', e => {
 
 		if( !e.data || !e.data.action || e.data.action !== '___O_MenuItem_Click') {
       return;
@@ -934,7 +941,7 @@ var MenuContextProxy = function() {
 
 		this.dispatchEvent( new MenuEvent('click', {info: e.data.info, tab: null},new MenuItemProxy(e.data.menuItemId)) );
 
-  }.bind(this));
+  });
 
 };
 
@@ -1023,7 +1030,7 @@ var UrlFilterEventListener = function() {
   // listen for URL Filter block/unblock/allowed events sent from the background
   // process and fire in this content script
 
-  OEX.addEventListener('controlmessage', function( msg ) {
+  OEX.addEventListener('controlmessage', msg => {
 
     if( !msg.data || !msg.data.action || !msg.data.data ) {
       return;
@@ -1051,7 +1058,7 @@ var UrlFilterEventListener = function() {
         break;
     }
 
-  }.bind(this));
+  });
 
 };
 
@@ -1077,21 +1084,20 @@ if (global.opera) {
   isReady = true;
 
   // Make scripts also work in Opera <= version 12
-  opera.isReady = function(fn) {
+  opera.isReady = fn => {
     fn.call(opera);
 
     // Run delayed events (if any)
     for(var i = 0, l = _delayedExecuteEvents.length; i < l; i++) {
       var o = _delayedExecuteEvents[i];
-      o.target[o.methodName].apply(o.target, o.args);
+      o.target[o.methodName](...o.args);
     }
     _delayedExecuteEvents = [];
   };
 
 } else {
 
-  opera.isReady = (function() {
-
+  opera.isReady = ((() => {
     var fns = {
           "isready": [],
           "readystatechange": [],
@@ -1099,9 +1105,9 @@ if (global.opera) {
           "load": []
         };
 
-    var hasFired_DOMContentLoaded = false,
-        hasFired_Load = false;
-    
+    var hasFired_DOMContentLoaded = false;
+    var hasFired_Load = false;
+
     // If we already missed DOMContentLoaded or Load events firing, record that now...
     if(global.document.readyState === "interactive") {
       hasFired_DOMContentLoaded = true;
@@ -1120,9 +1126,9 @@ if (global.opera) {
       hasFired_Load = true;
       global.removeEventListener("load", handle_Load, true);
     }, true);
-    
+
     // Catch and fire readystatechange events when they happen
-    global.document.addEventListener("readystatechange", function(event) {
+    global.document.addEventListener("readystatechange", event => {
       event.stopImmediatePropagation();
       event.stopPropagation();
       if( global.document.readyState !== 'interactive' && global.document.readyState !== 'complete' ) {
@@ -1131,18 +1137,18 @@ if (global.opera) {
         global.document.readyState = 'loading';
       }
     }, true);
-    
+
     // Take over handling of document.readyState via our own load bootstrap code below
     var _readyState = (hasFired_DOMContentLoaded || hasFired_Load) ? global.document.readyState : "uninitialized";
-    global.document.__defineSetter__('readyState', function(val) { _readyState = val; });
-    global.document.__defineGetter__('readyState', function() { return _readyState; });
+    global.document.__defineSetter__('readyState', val => { _readyState = val; });
+    global.document.__defineGetter__('readyState', () => _readyState);
 
     function interceptAddEventListener(target, _name) {
 
       var _target = target.addEventListener;
 
       // Replace addEventListener for given target
-      target.addEventListener = function(name, fn, usecapture) {
+      target.addEventListener = (name, fn, usecapture) => {
         name = name + ""; // force event name to type string
         
         if (name.toLowerCase() === _name.toLowerCase()) {
@@ -1163,7 +1169,7 @@ if (global.opera) {
       };
 
       // Replace target.on[_name] with custom setter function
-      target.__defineSetter__("on" + _name.toLowerCase(), function( fn ) {
+      target.__defineSetter__("on" + _name.toLowerCase(), fn => {
         // call code block just created above...
         target.addEventListener(_name.toLowerCase(), fn, false);
       });
@@ -1201,7 +1207,7 @@ if (global.opera) {
     }
 
     function ready() {
-      global.setTimeout(function() {
+      global.setTimeout(() => {
 
         if (isReady) {
           return;
@@ -1257,12 +1263,12 @@ if (global.opera) {
                 // Run delayed events (if any)
                 for(var i = 0, l = _delayedExecuteEvents.length; i < l; i++) {
                   var o = _delayedExecuteEvents[i];
-                  o.target[o.methodName].apply(o.target, o.args);
+                  o.target[o.methodName](...o.args);
                 }
                 _delayedExecuteEvents = [];
 
               } else {
-                global.setTimeout(function() {
+                global.setTimeout(() => {
                   fireLoad();
                 }, 50);
               }
@@ -1270,7 +1276,7 @@ if (global.opera) {
             })();
 
           } else {
-            global.setTimeout(function() {
+            global.setTimeout(() => {
               fireDOMContentLoaded();
             }, 50);
           }
@@ -1301,7 +1307,7 @@ if (global.opera) {
           // spin the loop until everything is working
           // or we receive a timeout override (handled
           // in next loop, above)
-          global.setTimeout(function() {
+          global.setTimeout(() => {
             holdReady();
           }, 20);
           return;
@@ -1313,7 +1319,7 @@ if (global.opera) {
 
     })();
 
-    return function(fn) {
+    return fn => {
       // if the Library is already ready,
       // execute the function immediately.
       // otherwise, queue it up until isReady
@@ -1322,12 +1328,12 @@ if (global.opera) {
       } else {
         fns['isready'].push(fn);
       }
-    }
-  })();
+    };
+  }))();
 
 }
 
   // Make API available on the window DOM object
   global.opera = opera;
 
-})( window );
+}))( window );
